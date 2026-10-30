@@ -956,15 +956,33 @@
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
-      const circleD = 54;
+      const vw = window.innerWidth, vh = window.innerHeight;
       const radius = 170;
-      // ◯同士の間隔：直径＋24px余白
-      const circleStepDeg = 2 * Math.asin((circleD / 2 + 12) / radius) * 180 / Math.PI;
-      // ピルの縦方向が重ならない最小角度
-      const pillStepDeg = (44 + 16) * 180 / (Math.PI * radius);
+      const circleStepDeg = 2 * Math.asin((54 / 2 + 12) / radius) * 180 / Math.PI;
+      const pillStepDeg = (50 + 16) * 180 / (Math.PI * radius);
       const stepDeg = Math.max(circleStepDeg, pillStepDeg);
       const spread = Math.max(n - 1, 1) * stepDeg;
-      // ピルは◯と同じY座標、X方向にのみオフセット（画面端でクランプ）
+
+      // 各アイテムの理想ラジアル方向を先に計算
+      const offsets = items.map((_, i) => {
+        const angleDeg = n === 1 ? centerDeg :
+          centerDeg - spread / 2 + (i / (n - 1)) * spread;
+        const rad = angleDeg * Math.PI / 180;
+        return { dx: Math.round(radius * Math.cos(rad)), dy: Math.round(radius * Math.sin(rad)), rad };
+      });
+
+      // はみ出し分だけ仮想中心点をシフト（アニメーション起点はタッチ座標のまま）
+      const pH = 25, pW = 72, mg = 14; // ピルの半高さ・半幅の余裕・マージン
+      let ox = touchX, oy = touchY;
+      const maxY = Math.max(...offsets.map(o => oy + o.dy + pH));
+      const minY = Math.min(...offsets.map(o => oy + o.dy - pH));
+      const maxX = Math.max(...offsets.map(o => ox + o.dx + pW));
+      const minX = Math.min(...offsets.map(o => ox + o.dx - pW));
+      if (maxY > vh - mg) oy -= maxY - (vh - mg);
+      if (minY < mg)      oy += mg - minY;
+      if (maxX > vw - mg) ox -= maxX - (vw - mg);
+      if (minX < mg)      ox += mg - minX;
+
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
 
@@ -975,22 +993,19 @@
       overlay.appendChild(dot);
 
       const fanItems = [];
-      items.forEach((item, i) => {
-        const angleDeg = n === 1 ? centerDeg :
-          centerDeg - spread / 2 + (i / (n - 1)) * spread;
-        const rad = angleDeg * Math.PI / 180;
-        const dx = Math.round(radius * Math.cos(rad));
-        const dy = Math.round(radius * Math.sin(rad));
+      offsets.forEach((o, i) => {
+        const adjDx = Math.round(ox - touchX + o.dx);
+        const adjDy = Math.round(oy - touchY + o.dy);
 
         const btn = document.createElement('div');
         btn.className = 'cs-fan-item';
-        btn.textContent = item.textContent.trim();
-        btn._val = item.dataset.value;
-        btn._src = item;
-        btn._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
-        btn._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.08)`;
-        btn._hitNx = -Math.cos(rad);
-        btn._hitNy = -Math.sin(rad);
+        btn.textContent = items[i].textContent.trim();
+        btn._val = items[i].dataset.value;
+        btn._src = items[i];
+        btn._baseTransform = `translate(calc(-50% + ${adjDx}px), calc(-50% + ${adjDy}px)) scale(1)`;
+        btn._hoverTransform = `translate(calc(-50% + ${adjDx}px), calc(-50% + ${adjDy}px)) scale(1.08)`;
+        btn._hitNx = -Math.cos(o.rad);
+        btn._hitNy = -Math.sin(o.rad);
         btn.style.left = touchX + 'px';
         btn.style.top = touchY + 'px';
         btn.style.transitionDelay = (i * 28) + 'ms';
