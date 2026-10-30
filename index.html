@@ -820,8 +820,7 @@
 
     <div class="field" id="f-contact">
       <label for="contact">アカウント名 <span class="req">*</span></label>
-      <input type="text" id="contact" name="contact" placeholder="">
-      <p class="hint" id="contactHint"></p>
+      <input type="text" id="contact" name="contact" placeholder="アカウント名を入力してください">
       <span class="err">入力してください</span>
     </div>
 
@@ -1169,7 +1168,6 @@
   document.getElementById('contactMethod').addEventListener('change', function() {
     const h = hints[this.value] || '';
     document.getElementById('contact').placeholder = h || 'アカウント名を入力してください';
-    document.getElementById('contactHint').textContent = '';
     document.getElementById('f-contact-method').classList.remove('invalid');
   });
 
