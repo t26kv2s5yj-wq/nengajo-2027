@@ -423,21 +423,16 @@
     pointer-events: none;
     transition: transform 0.15s ease;
   }
-  .cs-fan-item {
+  .cs-fan-circle {
     position: fixed;
-    height: 50px;
-    min-width: 60px;
-    padding: 0 20px;
-    border-radius: 25px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(0,0,0,0.1);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
-    font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 18px;
-    font-weight: 300;
-    color: #111;
+    border: 1.5px solid rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
     pointer-events: auto;
     touch-action: none;
     opacity: 0;
@@ -445,19 +440,36 @@
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
                 opacity 0.2s ease,
                 background 0.12s ease,
-                color 0.12s ease,
                 box-shadow 0.12s ease;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     user-select: none;
     -webkit-user-select: none;
   }
-  .cs-fan-item.cs-fan-hover {
+  .cs-fan-circle.cs-fan-hover {
     background: #CC0000;
-    color: #fff;
-    box-shadow: 0 8px 28px rgba(204,0,0,0.35), 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 24px rgba(204,0,0,0.4), 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .cs-fan-label {
+    position: fixed;
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(0,0,0,0.72);
+    pointer-events: none;
+    touch-action: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease,
+                color 0.12s ease,
+                font-weight 0.12s ease;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    text-shadow: 0 1px 6px rgba(255,255,255,0.9), 0 0 12px rgba(255,255,255,0.6);
+  }
+  .cs-fan-label.cs-fan-hover {
+    color: #CC0000;
+    font-weight: 500;
   }
 
 
@@ -971,6 +983,10 @@
       dot.style.top = touchY + 'px';
       overlay.appendChild(dot);
 
+      const circleR = 27; // 54px / 2
+      const labelGap = 10;
+      const labelRadius = radius + circleR + labelGap;
+
       const fanItems = [];
       items.forEach((item, i) => {
         const angleDeg = n === 1 ? centerDeg :
@@ -978,31 +994,44 @@
         const rad = angleDeg * Math.PI / 180;
         const dx = Math.round(radius * Math.cos(rad));
         const dy = Math.round(radius * Math.sin(rad));
+        const ldx = Math.round(labelRadius * Math.cos(rad));
+        const ldy = Math.round(labelRadius * Math.sin(rad));
 
-        const btn = document.createElement('div');
-        btn.className = 'cs-fan-item';
-        btn.textContent = item.textContent.trim();
-        btn._val = item.dataset.value;
-        btn._src = item;
-        btn._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
-        btn._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.1)`;
-        // 当たり判定を扇の中心方向に20pxオフセット
-        btn._hitNx = -Math.cos(rad);
-        btn._hitNy = -Math.sin(rad);
-        btn.style.left = touchX + 'px';
-        btn.style.top = touchY + 'px';
-        btn.style.transitionDelay = (i * 28) + 'ms';
+        const circle = document.createElement('div');
+        circle.className = 'cs-fan-circle';
+        circle._val = item.dataset.value;
+        circle._src = item;
+        circle._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
+        circle._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.12)`;
+        circle._hitNx = -Math.cos(rad);
+        circle._hitNy = -Math.sin(rad);
+        circle.style.left = touchX + 'px';
+        circle.style.top = touchY + 'px';
+        circle.style.transitionDelay = (i * 28) + 'ms';
 
-        overlay.appendChild(btn);
-        fanItems.push(btn);
+        const label = document.createElement('div');
+        label.className = 'cs-fan-label';
+        label.textContent = item.textContent.trim();
+        label._baseTransform = `translate(calc(-50% + ${ldx}px), calc(-50% + ${ldy}px)) scale(1)`;
+        label.style.left = touchX + 'px';
+        label.style.top = touchY + 'px';
+        label.style.transitionDelay = (i * 28) + 'ms';
+
+        circle._label = label;
+
+        overlay.appendChild(circle);
+        overlay.appendChild(label);
+        fanItems.push(circle);
       });
 
       document.body.appendChild(overlay);
 
       requestAnimationFrame(() => {
-        fanItems.forEach(btn => {
-          btn.style.opacity = '1';
-          btn.style.transform = btn._baseTransform;
+        fanItems.forEach(circle => {
+          circle.style.opacity = '1';
+          circle.style.transform = circle._baseTransform;
+          circle._label.style.opacity = '1';
+          circle._label.style.transform = circle._label._baseTransform;
         });
       });
 
@@ -1011,10 +1040,9 @@
 
     function getHit(x, y) {
       if (!popup) return null;
-      const shift = 20;
-      for (const el of popup.querySelectorAll('.cs-fan-item')) {
+      const shift = 14;
+      for (const el of popup.querySelectorAll('.cs-fan-circle')) {
         const r = el.getBoundingClientRect();
-        // 判定の中心を扇の中心側(内側)に20pxずらす
         const cx = (r.left + r.right) / 2 + (el._hitNx || 0) * shift;
         const cy = (r.top + r.bottom) / 2 + (el._hitNy || 0) * shift;
         const hw = r.width / 2;
@@ -1035,10 +1063,10 @@
     function closePopup() {
       if (!popup) return;
       const p = popup;
-      p.querySelectorAll('.cs-fan-item').forEach(btn => {
-        btn.style.transitionDelay = '0ms';
-        btn.style.transform = 'translate(-50%, -50%) scale(0)';
-        btn.style.opacity = '0';
+      p.querySelectorAll('.cs-fan-circle, .cs-fan-label').forEach(el => {
+        el.style.transitionDelay = '0ms';
+        el.style.transform = 'translate(-50%, -50%) scale(0)';
+        el.style.opacity = '0';
       });
       setTimeout(() => p.remove(), 320);
       popup = null; hovered = null; active = false;
@@ -1075,11 +1103,13 @@
         if (hit !== hovered) {
           if (hovered) {
             hovered.classList.remove('cs-fan-hover');
+            hovered._label?.classList.remove('cs-fan-hover');
             hovered.style.transform = hovered._baseTransform;
           }
           hovered = hit;
           if (hovered) {
             hovered.classList.add('cs-fan-hover');
+            hovered._label?.classList.add('cs-fan-hover');
             hovered.style.transform = hovered._hoverTransform;
             if (navigator.vibrate) navigator.vibrate(4);
           }
