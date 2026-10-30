@@ -423,14 +423,21 @@
     pointer-events: none;
     transition: transform 0.15s ease;
   }
-  .cs-fan-circle {
+  .cs-fan-item {
     position: fixed;
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
+    height: 50px;
+    padding: 0 22px;
+    border-radius: 25px;
     background: rgba(255,255,255,0.95);
-    border: 1.5px solid rgba(0,0,0,0.12);
+    border: 1.5px solid rgba(0,0,0,0.1);
     box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 17px;
+    font-weight: 300;
+    color: rgba(0,0,0,0.82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: auto;
     touch-action: none;
     opacity: 0;
@@ -438,42 +445,17 @@
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
                 opacity 0.2s ease,
                 background 0.1s ease,
+                color 0.1s ease,
                 box-shadow 0.1s ease;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .cs-fan-circle.cs-fan-hover {
-    background: #CC0000;
-    border-color: #CC0000;
-    box-shadow: 0 4px 18px rgba(204,0,0,0.4);
-  }
-  .cs-fan-label {
-    position: fixed;
-    height: 44px;
-    padding: 0 18px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.05);
-    font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 17px;
-    font-weight: 300;
-    color: var(--fg);
-    display: flex;
-    align-items: center;
-    pointer-events: none;
-    touch-action: none;
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-                opacity 0.2s ease,
-                color 0.08s ease,
-                background 0.08s ease;
     white-space: nowrap;
     user-select: none;
     -webkit-user-select: none;
   }
-  .cs-fan-label.cs-fan-hover {
+  .cs-fan-item.cs-fan-hover {
     background: #CC0000;
+    border-color: #CC0000;
     color: #fff;
+    box-shadow: 0 4px 18px rgba(204,0,0,0.4);
   }
 
 
@@ -984,8 +966,6 @@
       const stepDeg = Math.max(circleStepDeg, pillStepDeg);
       const spread = Math.max(n - 1, 1) * stepDeg;
       // ピルは◯と同じY座標、X方向にのみオフセット（画面端でクランプ）
-      const labelXSign = isRightSide ? -1 : 1;
-
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
 
@@ -1002,46 +982,30 @@
         const rad = angleDeg * Math.PI / 180;
         const dx = Math.round(radius * Math.cos(rad));
         const dy = Math.round(radius * Math.sin(rad));
-        const circle = document.createElement('div');
-        circle.className = 'cs-fan-circle';
-        circle._val = item.dataset.value;
-        circle._src = item;
-        circle._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
-        circle._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.12)`;
-        circle._hitNx = -Math.cos(rad);
-        circle._hitNy = -Math.sin(rad);
-        circle.style.left = touchX + 'px';
-        circle.style.top = touchY + 'px';
-        circle.style.transitionDelay = (i * 28) + 'ms';
 
-        const label = document.createElement('div');
-        label.className = 'cs-fan-label';
-        label.textContent = item.textContent.trim();
-        // ◯と同じY、X方向100px先（画面端クランプ）
-        const rawPillX = touchX + dx + labelXSign * 100;
-        const pillEstHalf = 52;
-        const clampedPillX = Math.max(pillEstHalf + 8, Math.min(window.innerWidth - pillEstHalf - 8, rawPillX));
-        const labelDx = clampedPillX - touchX;
-        label._baseTransform = `translate(calc(-50% + ${labelDx}px), calc(-50% + ${dy}px)) scale(1)`;
-        label.style.left = touchX + 'px';
-        label.style.top = touchY + 'px';
-        label.style.transitionDelay = (i * 28) + 'ms';
+        const btn = document.createElement('div');
+        btn.className = 'cs-fan-item';
+        btn.textContent = item.textContent.trim();
+        btn._val = item.dataset.value;
+        btn._src = item;
+        btn._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
+        btn._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.08)`;
+        btn._hitNx = -Math.cos(rad);
+        btn._hitNy = -Math.sin(rad);
+        btn.style.left = touchX + 'px';
+        btn.style.top = touchY + 'px';
+        btn.style.transitionDelay = (i * 28) + 'ms';
 
-        circle._label = label;
-
-        overlay.appendChild(circle);
-        overlay.appendChild(label);
-        fanItems.push(circle);
+        overlay.appendChild(btn);
+        fanItems.push(btn);
       });
 
       document.body.appendChild(overlay);
 
       requestAnimationFrame(() => {
-        fanItems.forEach(circle => {
-          circle.style.opacity = '1';
-          circle.style.transform = circle._baseTransform;
-          circle._label.style.opacity = '1';
-          circle._label.style.transform = circle._label._baseTransform;
+        fanItems.forEach(btn => {
+          btn.style.opacity = '1';
+          btn.style.transform = btn._baseTransform;
         });
       });
 
@@ -1051,7 +1015,7 @@
     function getHit(x, y) {
       if (!popup) return null;
       const shift = 14;
-      for (const el of popup.querySelectorAll('.cs-fan-circle')) {
+      for (const el of popup.querySelectorAll('.cs-fan-item')) {
         const r = el.getBoundingClientRect();
         const cx = (r.left + r.right) / 2 + (el._hitNx || 0) * shift;
         const cy = (r.top + r.bottom) / 2 + (el._hitNy || 0) * shift;
@@ -1073,7 +1037,7 @@
     function closePopup() {
       if (!popup) return;
       const p = popup;
-      p.querySelectorAll('.cs-fan-circle, .cs-fan-label').forEach(el => {
+      p.querySelectorAll('.cs-fan-item').forEach(el => {
         el.style.transitionDelay = '0ms';
         el.style.transform = 'translate(-50%, -50%) scale(0)';
         el.style.opacity = '0';
@@ -1113,13 +1077,11 @@
         if (hit !== hovered) {
           if (hovered) {
             hovered.classList.remove('cs-fan-hover');
-            hovered._label?.classList.remove('cs-fan-hover');
             hovered.style.transform = hovered._baseTransform;
           }
           hovered = hit;
           if (hovered) {
             hovered.classList.add('cs-fan-hover');
-            hovered._label?.classList.add('cs-fan-hover');
             hovered.style.transform = hovered._hoverTransform;
             if (navigator.vibrate) navigator.vibrate(4);
           }
