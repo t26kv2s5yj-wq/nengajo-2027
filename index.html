@@ -1058,7 +1058,18 @@
       document.addEventListener('touchend', endFn, { passive: false });
       document.addEventListener('touchcancel', cancelFn);
 
-      timer = setTimeout(() => { timer = null; openPopup(startTouch); }, 500);
+      timer = setTimeout(() => {
+        timer = null;
+        const focused = document.activeElement;
+        const hadKeyboard = focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.isContentEditable);
+        if (hadKeyboard) {
+          focused.blur();
+          // キーボードが下がるのを待ってからポップアップを開く
+          setTimeout(() => openPopup(startTouch), 280);
+        } else {
+          openPopup(startTouch);
+        }
+      }, 500);
     }, { passive: true });
   }
 
