@@ -425,17 +425,17 @@
   }
   .cs-fan-item {
     position: fixed;
-    height: 40px;
-    min-width: 48px;
-    padding: 0 16px;
-    border-radius: 20px;
+    height: 50px;
+    min-width: 60px;
+    padding: 0 20px;
+    border-radius: 25px;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(0,0,0,0.1);
     box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
     font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 300;
     color: #111;
     pointer-events: auto;
@@ -444,7 +444,9 @@
     transform: translate(-50%, -50%) scale(0);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
                 opacity 0.2s ease,
-                box-shadow 0.15s ease;
+                background 0.12s ease,
+                color 0.12s ease,
+                box-shadow 0.12s ease;
     white-space: nowrap;
     display: flex;
     align-items: center;
@@ -453,8 +455,9 @@
     -webkit-user-select: none;
   }
   .cs-fan-item.cs-fan-hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.1), 0 0 0 2px rgba(0,0,0,0.12);
-    background: rgba(255,255,255,0.98);
+    background: #CC0000;
+    color: #fff;
+    box-shadow: 0 8px 28px rgba(204,0,0,0.35), 0 2px 6px rgba(0,0,0,0.1);
   }
 
 
@@ -957,7 +960,7 @@
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
       const spread = n <= 2 ? 60 : n <= 4 ? 110 : 140;
-      const radius = 90;
+      const radius = 115;
 
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
