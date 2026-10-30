@@ -406,47 +406,55 @@
   }
 
   /* Long-press slide-select popup */
-  .cs-lp-popup {
+  .cs-fan-overlay {
     position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    touch-action: none;
+  }
+  .cs-fan-dot {
+    position: fixed;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.18);
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: none;
+    transition: transform 0.15s ease;
+  }
+  .cs-fan-item {
+    position: fixed;
+    height: 40px;
+    min-width: 48px;
+    padding: 0 16px;
+    border-radius: 20px;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 20px;
-    padding: 12px;
-    z-index: 9999;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.06);
-    pointer-events: none;
-    opacity: 0;
-    transform: scale(0.5);
-    transform-origin: top center;
-    transition: opacity 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
-                transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
-    user-select: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    max-width: 280px;
-  }
-  .cs-lp-popup.cs-lp-active {
-    opacity: 1;
-    transform: scale(1);
-  }
-  .cs-lp-item {
-    padding: 10px 18px;
-    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
     font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 300;
-    color: #000;
-    background: rgba(0,0,0,0.05);
-    transition: background 0.08s, color 0.08s;
+    color: #111;
+    pointer-events: auto;
+    touch-action: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease,
+                box-shadow 0.15s ease;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  .cs-lp-item.cs-lp-hover {
-    background: #CC0000;
-    color: #fff;
-    font-weight: 400;
+  .cs-fan-item.cs-fan-hover {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.1), 0 0 0 2px rgba(0,0,0,0.12);
+    background: rgba(255,255,255,0.98);
   }
 
 
@@ -943,38 +951,61 @@
     let timer = null, popup = null, hovered = null, active = false;
     let sx = 0, sy = 0, startTouch = null;
 
-    function buildPopup() {
-      const p = document.createElement('div');
-      p.className = 'cs-lp-popup';
-      cs.querySelectorAll('.cs-item').forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'cs-lp-item';
-        el.textContent = item.textContent.trim();
-        el._val = item.dataset.value;
-        el._src = item;
-        p.appendChild(el);
-      });
-      return p;
-    }
+    function buildFanMenu(touchX, touchY) {
+      const isRightSide = touchX > window.innerWidth / 2;
+      const centerDeg = isRightSide ? 180 : 0;
+      const items = Array.from(cs.querySelectorAll('.cs-item'));
+      const n = items.length;
+      const spread = n <= 2 ? 60 : n <= 4 ? 110 : 140;
+      const radius = 90;
 
-    function positionPopup(p, touchX) {
-      const r = cs.getBoundingClientRect();
-      const vw = window.innerWidth, vh = window.innerHeight;
-      document.body.appendChild(p);
-      const ph = p.offsetHeight;
-      const pw = p.offsetWidth;
-      // タッチX座標を中心にポップアップを配置
-      let left = touchX - pw / 2;
-      left = Math.max(16, Math.min(left, vw - pw - 16));
-      let top = r.bottom + 8;
-      if (top + ph > vh - 20) top = r.top - ph - 8;
-      p.style.top = Math.max(20, top) + 'px';
-      p.style.left = left + 'px';
+      const overlay = document.createElement('div');
+      overlay.className = 'cs-fan-overlay';
+
+      const dot = document.createElement('div');
+      dot.className = 'cs-fan-dot';
+      dot.style.left = touchX + 'px';
+      dot.style.top = touchY + 'px';
+      overlay.appendChild(dot);
+
+      const fanItems = [];
+      items.forEach((item, i) => {
+        const angleDeg = n === 1 ? centerDeg :
+          centerDeg - spread / 2 + (i / (n - 1)) * spread;
+        const rad = angleDeg * Math.PI / 180;
+        const dx = Math.round(radius * Math.cos(rad));
+        const dy = Math.round(radius * Math.sin(rad));
+
+        const btn = document.createElement('div');
+        btn.className = 'cs-fan-item';
+        btn.textContent = item.textContent.trim();
+        btn._val = item.dataset.value;
+        btn._src = item;
+        btn._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
+        btn._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.1)`;
+        btn.style.left = touchX + 'px';
+        btn.style.top = touchY + 'px';
+        btn.style.transitionDelay = (i * 28) + 'ms';
+
+        overlay.appendChild(btn);
+        fanItems.push(btn);
+      });
+
+      document.body.appendChild(overlay);
+
+      requestAnimationFrame(() => {
+        fanItems.forEach(btn => {
+          btn.style.opacity = '1';
+          btn.style.transform = btn._baseTransform;
+        });
+      });
+
+      return { overlay, fanItems };
     }
 
     function getHit(x, y) {
       if (!popup) return null;
-      for (const el of popup.querySelectorAll('.cs-lp-item')) {
+      for (const el of popup.querySelectorAll('.cs-fan-item')) {
         const r = el.getBoundingClientRect();
         if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
       }
@@ -983,20 +1014,22 @@
 
     function openPopup(touch) {
       cs.setAttribute('aria-expanded', 'false');
-      popup = buildPopup();
-      positionPopup(popup, touch.clientX);
-      const popLeft = parseFloat(popup.style.left) || 0;
-      const popTop = parseFloat(popup.style.top) || 0;
-      const ox = Math.max(0, touch.clientX - popLeft);
-      const oy = Math.max(0, touch.clientY - popTop);
-      popup.style.transformOrigin = ox + 'px ' + oy + 'px';
-      requestAnimationFrame(() => popup.classList.add('cs-lp-active'));
+      const { overlay } = buildFanMenu(touch.clientX, touch.clientY);
+      popup = overlay;
       if (navigator.vibrate) navigator.vibrate(12);
       active = true;
     }
 
     function closePopup() {
-      popup?.remove(); popup = null; hovered = null; active = false;
+      if (!popup) return;
+      const p = popup;
+      p.querySelectorAll('.cs-fan-item').forEach(btn => {
+        btn.style.transitionDelay = '0ms';
+        btn.style.transform = 'translate(-50%, -50%) scale(0)';
+        btn.style.opacity = '0';
+      });
+      setTimeout(() => p.remove(), 320);
+      popup = null; hovered = null; active = false;
     }
 
     function selectItem(el) {
@@ -1028,10 +1061,16 @@
         e.preventDefault();
         const hit = getHit(t.clientX, t.clientY);
         if (hit !== hovered) {
-          hovered?.classList.remove('cs-lp-hover');
+          if (hovered) {
+            hovered.classList.remove('cs-fan-hover');
+            hovered.style.transform = hovered._baseTransform;
+          }
           hovered = hit;
-          hovered?.classList.add('cs-lp-hover');
-          if (hovered && navigator.vibrate) navigator.vibrate(4);
+          if (hovered) {
+            hovered.classList.add('cs-fan-hover');
+            hovered.style.transform = hovered._hoverTransform;
+            if (navigator.vibrate) navigator.vibrate(4);
+          }
         }
       };
 
