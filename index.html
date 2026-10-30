@@ -960,7 +960,7 @@
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
       const spread = n <= 2 ? 60 : n <= 4 ? 110 : 140;
-      const radius = 115;
+      const radius = 140;
 
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
@@ -986,6 +986,9 @@
         btn._src = item;
         btn._baseTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1)`;
         btn._hoverTransform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.1)`;
+        // 当たり判定を扇の中心方向に20pxオフセット
+        btn._hitNx = -Math.cos(rad);
+        btn._hitNy = -Math.sin(rad);
         btn.style.left = touchX + 'px';
         btn.style.top = touchY + 'px';
         btn.style.transitionDelay = (i * 28) + 'ms';
@@ -1008,9 +1011,15 @@
 
     function getHit(x, y) {
       if (!popup) return null;
+      const shift = 20;
       for (const el of popup.querySelectorAll('.cs-fan-item')) {
         const r = el.getBoundingClientRect();
-        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
+        // 判定の中心を扇の中心側(内側)に20pxずらす
+        const cx = (r.left + r.right) / 2 + (el._hitNx || 0) * shift;
+        const cy = (r.top + r.bottom) / 2 + (el._hitNy || 0) * shift;
+        const hw = r.width / 2;
+        const hh = r.height / 2;
+        if (x >= cx - hw && x <= cx + hw && y >= cy - hh && y <= cy + hh) return el;
       }
       return null;
     }
