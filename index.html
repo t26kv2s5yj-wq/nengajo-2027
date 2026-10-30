@@ -428,17 +428,24 @@
     width: 54px;
     height: 54px;
     border-radius: 50%;
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    background: rgba(255,255,255,0.95);
+    border: 1.5px solid rgba(0,0,0,0.12);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
     pointer-events: auto;
     touch-action: none;
     opacity: 0;
     transform: translate(-50%, -50%) scale(0);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-                opacity 0.2s ease;
+                opacity 0.2s ease,
+                background 0.1s ease,
+                box-shadow 0.1s ease;
     user-select: none;
     -webkit-user-select: none;
+  }
+  .cs-fan-circle.cs-fan-hover {
+    background: #CC0000;
+    border-color: #CC0000;
+    box-shadow: 0 4px 18px rgba(204,0,0,0.4);
   }
   .cs-fan-label {
     position: fixed;
@@ -969,11 +976,11 @@
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
       const circleD = 54;
-      const radius = 140;
-      // ◯同士が重ならない最小角度（直径＋8px余白）
-      const circleStepDeg = 2 * Math.asin((circleD / 2 + 4) / radius) * 180 / Math.PI;
-      // ピルが重ならない最小角度（高さ44px＋8px余白、水平付近が最大密度）
-      const pillStepDeg = (44 + 8) * 180 / (Math.PI * radius);
+      const radius = 170;
+      // ◯同士の間隔：直径＋24px余白
+      const circleStepDeg = 2 * Math.asin((circleD / 2 + 12) / radius) * 180 / Math.PI;
+      // ピルの縦方向が重ならない最小角度
+      const pillStepDeg = (44 + 16) * 180 / (Math.PI * radius);
       const stepDeg = Math.max(circleStepDeg, pillStepDeg);
       const spread = Math.max(n - 1, 1) * stepDeg;
       // ピルは◯と同じY座標、X方向にのみオフセット（画面端でクランプ）
