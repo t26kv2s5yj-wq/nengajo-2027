@@ -952,27 +952,55 @@
     let sx = 0, sy = 0, startTouch = null;
 
     function buildFanMenu(touchX, touchY) {
-      const isRightSide = touchX > window.innerWidth / 2;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const isRightSide = touchX > vw / 2;
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
-      const vw = window.innerWidth, vh = window.innerHeight;
       const radius = 170;
       const circleStepDeg = 2 * Math.asin((54 / 2 + 12) / radius) * 180 / Math.PI;
       const pillStepDeg = (50 + 16) * 180 / (Math.PI * radius);
       const stepDeg = Math.max(circleStepDeg, pillStepDeg);
       const spread = Math.max(n - 1, 1) * stepDeg;
 
-      // 各アイテムの理想ラジアル方向を先に計算
-      const offsets = items.map((_, i) => {
-        const angleDeg = n === 1 ? centerDeg :
-          centerDeg - spread / 2 + (i / (n - 1)) * spread;
-        const rad = angleDeg * Math.PI / 180;
+      // 基本角度（回転前）
+      const baseAngles = items.map((_, i) =>
+        n === 1 ? centerDeg : centerDeg - spread / 2 + (i / (n - 1)) * spread
+      );
+
+      const pH = 25, pW = 72, mg = 14;
+
+      // 指定回転量でのY方向はみ出し量を返す
+      function vertOv(rot) {
+        let bot = 0, top = 0;
+        for (const a of baseAngles) {
+          const dy = radius * Math.sin((a + rot) * Math.PI / 180);
+          bot = Math.max(bot, touchY + dy + pH - (vh - mg));
+          top = Math.max(top, mg - (touchY + dy - pH));
+        }
+        return bot + top;
+      }
+
+      // 両方向を試して overflow が減る方向を選択、binary search で最小回転量を求める
+      let bestRot = 0;
+      if (vertOv(0) > 0.5) {
+        const dir = vertOv(5) <= vertOv(-5) ? 1 : -1;
+        let lo = 0, hi = 90;
+        for (let i = 0; i < 16; i++) {
+          const mid = (lo + hi) / 2;
+          vertOv(dir * mid) > 0.5 ? lo = mid : hi = mid;
+        }
+        bestRot = dir * hi;
+      }
+
+      // 回転を適用してオフセットを確定
+      const offsets = baseAngles.map(a => {
+        const angle = a + bestRot;
+        const rad = angle * Math.PI / 180;
         return { dx: Math.round(radius * Math.cos(rad)), dy: Math.round(radius * Math.sin(rad)), rad };
       });
 
-      // はみ出し分だけ仮想中心点をシフト（アニメーション起点はタッチ座標のまま）
-      const pH = 25, pW = 72, mg = 14; // ピルの半高さ・半幅の余裕・マージン
+      // 回転でも残るはみ出し（主に水平）を最小シフトで補正
       let ox = touchX, oy = touchY;
       const maxY = Math.max(...offsets.map(o => oy + o.dy + pH));
       const minY = Math.min(...offsets.map(o => oy + o.dy - pH));
