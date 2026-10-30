@@ -977,10 +977,16 @@
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
-      const spread = n <= 2 ? 50 : n <= 4 ? 85 : 105;
-      const radius = 120;      // ◯の中心距離
-      // ピルは◯と同じY座標、X方向にのみオフセット
-      const labelXOffset = isRightSide ? -95 : 95;
+      const circleD = 54;
+      const radius = 140;
+      // ◯同士が重ならない最小角度（直径＋8px余白）
+      const circleStepDeg = 2 * Math.asin((circleD / 2 + 4) / radius) * 180 / Math.PI;
+      // ピルが重ならない最小角度（高さ44px＋8px余白、水平付近が最大密度）
+      const pillStepDeg = (44 + 8) * 180 / (Math.PI * radius);
+      const stepDeg = Math.max(circleStepDeg, pillStepDeg);
+      const spread = Math.max(n - 1, 1) * stepDeg;
+      // ピルは◯と同じY座標、X方向にのみオフセット（画面端でクランプ）
+      const labelXSign = isRightSide ? -1 : 1;
 
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
@@ -998,9 +1004,6 @@
         const rad = angleDeg * Math.PI / 180;
         const dx = Math.round(radius * Math.cos(rad));
         const dy = Math.round(radius * Math.sin(rad));
-        // ピルは◯と同じY (dy)、X方向のみオフセット
-        const labelDx = dx + labelXOffset;
-
         const circle = document.createElement('div');
         circle.className = 'cs-fan-circle';
         circle._val = item.dataset.value;
@@ -1016,6 +1019,11 @@
         const label = document.createElement('div');
         label.className = 'cs-fan-label';
         label.textContent = item.textContent.trim();
+        // ◯と同じY、X方向100px先（画面端クランプ）
+        const rawPillX = touchX + dx + labelXSign * 100;
+        const pillEstHalf = 52;
+        const clampedPillX = Math.max(pillEstHalf + 8, Math.min(window.innerWidth - pillEstHalf - 8, rawPillX));
+        const labelDx = clampedPillX - touchX;
         label._baseTransform = `translate(calc(-50% + ${labelDx}px), calc(-50% + ${dy}px)) scale(1)`;
         label.style.left = touchX + 'px';
         label.style.top = touchY + 'px';
