@@ -450,10 +450,20 @@
   }
   .cs-fan-label {
     position: fixed;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06);
     font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 300;
-    color: rgba(0,0,0,0.72);
+    color: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
     pointer-events: none;
     touch-action: none;
     opacity: 0;
@@ -461,15 +471,16 @@
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
                 opacity 0.2s ease,
                 color 0.12s ease,
-                font-weight 0.12s ease;
+                background 0.12s ease,
+                box-shadow 0.12s ease;
     white-space: nowrap;
     user-select: none;
     -webkit-user-select: none;
-    text-shadow: 0 1px 6px rgba(255,255,255,0.9), 0 0 12px rgba(255,255,255,0.6);
   }
   .cs-fan-label.cs-fan-hover {
     color: #CC0000;
-    font-weight: 500;
+    background: rgba(255,240,240,0.95);
+    box-shadow: 0 4px 16px rgba(204,0,0,0.15), 0 1px 4px rgba(0,0,0,0.06);
   }
 
 
@@ -971,8 +982,9 @@
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       const n = items.length;
-      const spread = n <= 2 ? 60 : n <= 4 ? 110 : 140;
-      const radius = 140;
+      const spread = n <= 2 ? 50 : n <= 4 ? 85 : 105;
+      const radius = 82;       // ◯の中心距離
+      const labelRadius = 180; // ピルの中心距離（◯の外側十分遠く）
 
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
@@ -982,10 +994,6 @@
       dot.style.left = touchX + 'px';
       dot.style.top = touchY + 'px';
       overlay.appendChild(dot);
-
-      const circleR = 27; // 54px / 2
-      const labelGap = 10;
-      const labelRadius = radius + circleR + labelGap;
 
       const fanItems = [];
       items.forEach((item, i) => {
