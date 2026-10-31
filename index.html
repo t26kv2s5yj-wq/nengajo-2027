@@ -1297,17 +1297,8 @@
       document.getElementById('city').value = addr[1];
       document.getElementById('f-addr-display')?.classList.remove('invalid');
 
-      // 住所を都道府県 / 市(郡) / 区町村 / 町名 のセグメントに分割
-      const segs = [pref];
-      const mCity = addr[1].match(/^(.*?市)(.*)/);
-      const mGun  = !mCity && addr[1].match(/^(.*?郡)(.*)/);
-      const mSplit = mCity || mGun;
-      if (mSplit && mSplit[2]) {
-        segs.push(mSplit[1], mSplit[2]);
-      } else {
-        segs.push(addr[1]);
-      }
-      if (addr[2]) segs.push(addr[2]);
+      // 都道府県 / それ以降（分割なし）
+      const segs = [pref, addr[1] + (addr[2] || '')];
 
       // セグメントごとにタイプ（境界で間を置く・各文字前にランダム英数字変換演出）
       const RAND = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789';
