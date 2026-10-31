@@ -1127,12 +1127,15 @@
     function closePopup() {
       if (!popup) return;
       const p = popup;
-      p.querySelectorAll('.cs-fan-item').forEach(el => {
-        el.style.transitionDelay = '0ms';
+      const items = Array.from(p.querySelectorAll('.cs-fan-item'));
+      const n = items.length;
+      items.forEach((el, i) => {
+        const delay = (n - 1 - i) * 40;
+        el.style.transition = `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms, opacity 0.3s ease ${delay}ms`;
         el.style.transform = 'translate(-50%, -50%) scale(0)';
         el.style.opacity = '0';
       });
-      setTimeout(() => p.remove(), 320);
+      setTimeout(() => p.remove(), 400 + (n - 1) * 40);
       popup = null; hovered = null; active = false;
     }
 
