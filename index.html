@@ -1020,6 +1020,9 @@
       dot.style.top = touchY + 'px';
       overlay.appendChild(dot);
 
+      // 隣接アイテム間の弦の半分 = 重ならない最大ヒット円半径
+      const hitR = radius * Math.sin(stepDeg / 2 * Math.PI / 180);
+
       const fanItems = [];
       offsets.forEach((o, i) => {
         const adjDx = Math.round(ox - touchX + o.dx);
@@ -1032,8 +1035,9 @@
         btn._src = items[i];
         btn._baseTransform = `translate(calc(-50% + ${adjDx}px), calc(-50% + ${adjDy}px)) scale(1)`;
         btn._hoverTransform = `translate(calc(-50% + ${adjDx}px), calc(-50% + ${adjDy}px)) scale(1.08)`;
-        btn._hitNx = -Math.cos(o.rad);
-        btn._hitNy = -Math.sin(o.rad);
+        btn._hitR = hitR;
+        btn._cx = touchX + adjDx;
+        btn._cy = touchY + adjDy;
         btn.style.left = touchX + 'px';
         btn.style.top = touchY + 'px';
         btn.style.transitionDelay = (i * 28) + 'ms';
@@ -1056,14 +1060,9 @@
 
     function getHit(x, y) {
       if (!popup) return null;
-      const shift = 14;
       for (const el of popup.querySelectorAll('.cs-fan-item')) {
-        const r = el.getBoundingClientRect();
-        const cx = (r.left + r.right) / 2 + (el._hitNx || 0) * shift;
-        const cy = (r.top + r.bottom) / 2 + (el._hitNy || 0) * shift;
-        const hw = r.width / 2;
-        const hh = r.height / 2;
-        if (x >= cx - hw && x <= cx + hw && y >= cy - hh && y <= cy + hh) return el;
+        const dx = x - el._cx, dy = y - el._cy;
+        if (dx * dx + dy * dy <= el._hitR * el._hitR) return el;
       }
       return null;
     }
