@@ -1061,8 +1061,16 @@
     function getHit(x, y) {
       if (!popup) return null;
       for (const el of popup.querySelectorAll('.cs-fan-item')) {
+        const r = el.getBoundingClientRect();
+        const visHalfH = r.height / 2 || 25;
+        const scale = el._hitR / visHalfH;
+        const hitHalfW = (r.width / 2) * scale;
+        const hitH = el._hitR;
+        // カプセル形当たり判定（ピルは水平固定）
         const dx = x - el._cx, dy = y - el._cy;
-        if (dx * dx + dy * dy <= el._hitR * el._hitR) return el;
+        const capOff = Math.max(0, hitHalfW - hitH);
+        const cx = Math.max(-capOff, Math.min(capOff, dx));
+        if ((dx - cx) * (dx - cx) + dy * dy <= hitH * hitH) return el;
       }
       return null;
     }
