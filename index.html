@@ -321,7 +321,23 @@
   .custom-select[aria-expanded="true"] .cs-chevron {
     transform: translateY(-50%) rotate(180deg);
   }
-  @media (pointer: coarse) { .cs-chevron { display: none; } }
+  @media (pointer: coarse) {
+    .cs-chevron { display: none; }
+    .custom-select { padding-right: 68px; }
+    .custom-select::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 64px;
+      border-radius: 0 var(--r) var(--r) 0;
+      background:
+        rgba(0,0,0,0.03)
+        url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'><circle cx='32' cy='32' r='27' stroke='%230a0a0a' stroke-width='0.8' opacity='0.07'/><circle cx='32' cy='32' r='19' stroke='%230a0a0a' stroke-width='1' opacity='0.13'/><circle cx='32' cy='32' r='11' stroke='%230a0a0a' stroke-width='1.2' opacity='0.22'/><circle cx='32' cy='32' r='4.5' stroke='%230a0a0a' stroke-width='1.5' opacity='0.34'/><circle cx='32' cy='32' r='1.5' fill='%230a0a0a' opacity='0.5'/></svg>")
+        no-repeat center;
+      border-left: 1px solid rgba(0,0,0,0.07);
+      pointer-events: none;
+    }
+  }
 
   .cs-list {
     display: flex;
@@ -941,7 +957,7 @@
     // 説明文を入力欄の内側に追加
     const hintEl = document.createElement('span');
     hintEl.className = 'cs-inner-hint';
-    hintEl.innerHTML = '<svg viewBox="0 0 46 16" width="46" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="3.5" width="37" height="9" rx="4.5" stroke="#0a0a0a" stroke-width="0.9" opacity="0.13"/><circle cx="38" cy="8" r="6.5" stroke="#0a0a0a" stroke-width="0.8" opacity="0.09"/><circle cx="38" cy="8" r="4.2" stroke="#0a0a0a" stroke-width="1" opacity="0.17"/><circle cx="38" cy="8" r="2" stroke="#0a0a0a" stroke-width="1.1" opacity="0.33"/><circle cx="38" cy="8" r="0.85" fill="#0a0a0a" opacity="0.5"/><\/svg>長押しとスライドで選択';
+    hintEl.innerHTML = '長押しとスライドで選択';
     cs.appendChild(hintEl);
 
     // タップでドロップダウンが開かないよう click を無効化
