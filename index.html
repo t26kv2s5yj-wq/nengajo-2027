@@ -1343,7 +1343,7 @@
       // タイプライター演出
       const pref = PREF_NAMES[addr[0]] || '';
       document.getElementById('pref').value = pref;
-      document.getElementById('city').value = addr[1];
+      document.getElementById('city').value = addr[1] + (addr[2] || '');
       document.getElementById('f-addr-display')?.classList.remove('invalid');
 
       // 都道府県 / それ以降（分割なし）
