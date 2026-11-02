@@ -110,6 +110,13 @@
 
   .section-label:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 
+  .section-note {
+    font-size: 11px;
+    color: var(--fg-2);
+    margin: -4px 2px 8px;
+    line-height: 1.6;
+  }
+
   .row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -840,10 +847,11 @@
       <span class="err">入力してください</span>
     </div>
 
-    <p class="section-label">受付完了の連絡方法</p>
+    <p class="section-label">応募アカウントの確認</p>
+    <p class="section-note">宛先のお名前と応募いただいたアカウント名が異なる場合の確認に使用させていただきます。</p>
 
     <div class="field" id="f-contact-method">
-      <label>連絡方法 <span class="req">*</span></label>
+      <label>応募リクエストに使用した連絡サービス <span class="req">*</span></label>
       <div class="aurora-wrap">
         <div class="custom-select" id="cs-contactMethod" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
           <input type="hidden" id="contactMethod" name="contactMethod" value="">
@@ -998,6 +1006,7 @@
       const isRightSide = touchX > vw / 2;
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
+      if (csId === 'cs-contactMethod') items.reverse();
       const n = items.length;
       const radius = 170;
       const circleStepDeg = 2 * Math.asin((54 / 2 + 12) / radius) * 180 / Math.PI;
@@ -1260,16 +1269,20 @@
   const contactLabels = {
     'LINE':       { label: 'アカウント名（表示名）', placeholder: 'LINEの表示名を入力' },
     'Instagram':  { label: 'ユーザーネーム',         placeholder: '@から始まるユーザーネーム' },
-    'メッセージ': { label: '電話番号',               placeholder: '080-0000-0000' },
+    'メッセージ': { label: '電話番号',               placeholder: '08000000000' },
   };
 
   document.getElementById('contactMethod').addEventListener('change', function() {
     const c = contactLabels[this.value] || { label: 'アカウント名', placeholder: 'アカウント名を入力してください' };
     const labelEl = document.getElementById('contactLabel');
     labelEl.childNodes[0].textContent = c.label + ' ';
-    document.getElementById('contact').placeholder = c.placeholder;
+    const contactEl = document.getElementById('contact');
+    contactEl.placeholder = c.placeholder;
+    contactEl.dataset.mode = this.value === 'メッセージ' ? 'tel' : 'text';
+    contactEl.inputMode = this.value === 'メッセージ' ? 'numeric' : 'text';
     document.getElementById('f-contact-method').classList.remove('invalid');
   });
+
 
   function validate(id, ok) {
     document.getElementById(id)?.classList.toggle('invalid', !ok);
@@ -1464,7 +1477,8 @@
     const payload = {
       token: TOKEN,
       timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
-      sei, mei, zip, pref, city, street, contactMethod, contact, message,
+      sei, mei, zip, pref, city, street, contactMethod, message,
+      contact: (contactMethod === 'メッセージ') ? (d => d.length > 7 ? d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7) : d.length > 3 ? d.slice(0,3)+'-'+d.slice(3) : d)(contact.replace(/\D/g,'')).slice(0,13) : contact,
       renmeCount: renmeCount > 0 ? renmeCount + '名' : 'なし',
       renme1sei: renmeData[0]?.sei || '', renme1mei: renmeData[0]?.mei || '',
       renme2sei: renmeData[1]?.sei || '', renme2mei: renmeData[1]?.mei || '',
