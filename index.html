@@ -32,6 +32,17 @@
     padding-right: max(24px, env(safe-area-inset-right, 0px));
     background-color: #e8e8e8;
   }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    backdrop-filter: blur(6px) brightness(1.06);
+    -webkit-backdrop-filter: blur(6px) brightness(1.06);
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  body.blob-pressing:not(.confirm-showing)::before { opacity: 1; }
 
   .bg-deco {
     display: none;
@@ -223,17 +234,29 @@
   .aurora-wrap::before { display: none; }
   .aurora-wrap::after  { display: none; }
 
-  /* 浮き出し（raised）: 選択状態 — わずかに上に移動＋シャドウ */
+  /* 浮き出し（raised）: 選択状態 — わずかに上に移動＋赤グロー */
   .aurora-wrap.focused {
     transform: translateY(-3px);
     box-shadow:
-      8px 8px 30px rgba(0,0,0,0.28),
-      -8px -8px 30px rgba(255,255,255,1);
+      8px 8px 30px rgba(204,0,0,0.35),
+      -8px -8px 30px rgba(255,255,255,1),
+      0 8px 28px rgba(204,0,0,0.25);
   }
 
 @keyframes aurora-spin-wrap {
     to { --aurora-angle: 360deg; }
   }
+
+  @keyframes slide-from-left {
+    from { transform: translateX(-110vw); opacity: 0; }
+    to   { transform: translateX(0);      opacity: 1; }
+  }
+  @keyframes slide-from-right {
+    from { transform: translateX(110vw);  opacity: 0; }
+    to   { transform: translateX(0);      opacity: 1; }
+  }
+  .slide-left  { animation: slide-from-left  0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+  .slide-right { animation: slide-from-right 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
   .aurora-wrap > input,
   .aurora-wrap > select,
@@ -359,6 +382,7 @@
     }
   }
 
+
   .cs-list {
     display: flex;
     position: absolute;
@@ -438,6 +462,32 @@
       width: 70px;
       height: 20px;
     }
+    /* ピルをヒントテキストと同じ高さに揃える */
+    .custom-select {
+      padding-bottom: 10px;
+    }
+    .custom-select::after {
+      top: auto;
+      bottom: 10px;
+      transform: none;
+    }
+    /* 「選ぶ」テキストをピルの上に重ねる */
+    .custom-select .cs-display:not(.cs-placeholder) {
+      position: absolute;
+      right: 20px;
+      bottom: 10px;
+      top: auto;
+      transform: none;
+      width: 72px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--fg);
+      pointer-events: none;
+      z-index: 1;
+    }
   }
 
   /* Long-press slide-select popup */
@@ -453,9 +503,9 @@
   }
   .cs-fan-item {
     position: fixed;
-    height: 50px;
-    padding: 0 22px;
-    border-radius: 25px;
+    z-index: 10;
+    padding: 10px 24px;
+    border-radius: 999px;
     background: rgba(255,255,255,0.95);
     border: 1.5px solid rgba(0,0,0,0.1);
     box-shadow: 0 2px 10px rgba(0,0,0,0.12);
@@ -479,11 +529,20 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  .cs-fan-item.cs-fan-hover {
+  .cs-fan-item.cs-fan-hover,
+  .cs-fan-item.active {
     background: #CC0000;
     border-color: #CC0000;
     color: #fff;
     box-shadow: 0 4px 18px rgba(204,0,0,0.4);
+  }
+  @media (hover: hover) {
+    .cs-fan-item:hover {
+      background: #CC0000;
+      border-color: #CC0000;
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(204,0,0,0.4);
+    }
   }
 
 
@@ -494,19 +553,189 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    bottom: 0;
+    pointer-events: none;
     z-index: 9998;
-    background: rgba(0,0,0,0.06);
-    /* iOSキーボード対策: visual viewportに追従させる */
-    transform: translateZ(0);
   }
-  #progress-bar {
-    height: 100%;
-    width: 0%;
+  #progress-bar-l,
+  #progress-bar-r {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 0%;
     background: #CC0000;
-    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 0 6px rgba(204,0,0,0.5);
+    transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 8px rgba(204,0,0,0.4);
   }
+  #progress-bar-l { left: 0; }
+  #progress-bar-r { right: 0; }
+  #progress-pct {
+    position: fixed;
+    right: 10px;
+    top: 0vh;
+    z-index: 9999;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    color: #CC0000;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    transform: translateY(-50%);
+    transition: opacity 0.3s ease, top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+  }
+  #progress-pct.visible { opacity: 1; }
+
+  /* ---- イントロ画面 ---- */
+  #intro {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: #e8e8e8;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-start;
+    transition: opacity 0.6s ease;
+  }
+  #intro.fade-out { opacity: 0; pointer-events: none; }
+  #intro::before {
+    content: '';
+    position: absolute; inset: 0;
+    backdrop-filter: blur(6px) brightness(1.06);
+    -webkit-backdrop-filter: blur(6px) brightness(1.06);
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  body.blob-pressing #intro::before { opacity: 1; }
+  #intro-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding: 60px 24px calc(env(safe-area-inset-bottom, 0px) + 72px);
+    text-align: center;
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+  #intro-q {
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: clamp(18px, 5vw, 24px);
+    font-weight: 500;
+    line-height: 1.8;
+    color: var(--fg);
+    margin: 0;
+  }
+  #intro-cs {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  #intro-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
+    background: #f2f2f2;
+    box-shadow: 6px 6px 14px rgba(0,0,0,0.10), -4px -4px 10px rgba(255,255,255,0.85);
+    color: #888;
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    transition: box-shadow 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+  #intro-btn.pressing {
+    box-shadow: inset 3px 3px 8px rgba(204,0,0,0.18), inset -2px -2px 6px rgba(255,255,255,0.7), 0 0 0 2px rgba(204,0,0,0.15);
+  }
+  #intro-fan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .ifan-item {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    white-space: nowrap;
+    background: rgba(0,0,0,0.05);
+    border: none;
+    color: var(--fg);
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 17px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s, color 0.1s;
+    -webkit-user-select: none;
+    user-select: none;
+    z-index: 10;
+  }
+  .ifan-item.active { background: #CC0000; color: #fff; }
+  @media (hover: hover) {
+    .ifan-item:hover {
+      background: #CC0000;
+      color: #fff;
+    }
+  }
+  .intro-ripple {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(204,0,0,0.65) 0%, rgba(204,0,0,0) 70%);
+    pointer-events: none;
+    animation: intro-ripple 2.7s ease-out infinite;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  .intro-ripple:nth-child(2) { animation-delay: 0.38s; }
+  @keyframes intro-ripple {
+    0%   { transform: translate(-50%,-50%) scale(0.8); opacity: 1; }
+    33%  { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
+    100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
+  }
+  #intro-hint {
+    font-size: 11px;
+    color: #aaa;
+    margin: 0;
+    letter-spacing: 0.04em;
+    margin-top: auto;
+  }
+  @media (pointer: fine) {
+    #intro-inner {
+      justify-content: center;
+      position: relative;
+    }
+    #intro-q {
+      position: absolute;
+      top: 60px;
+      left: 0; right: 0;
+      text-align: center;
+    }
+    #intro-hint { margin-top: 0; }
+  }
+  #intro-reply {
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 20px;
+    color: var(--fg);
+    margin: 0;
+    min-height: 1.5em;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  #intro-reply.show { opacity: 1; }
 
   .addr-group {
     display: flex;
@@ -654,7 +883,7 @@
   }
 
   .btn-submit {
-    background: var(--fg);
+    background: #CC0000;
     border: none;
     color: #ffffff;
     border-radius: 999px;
@@ -726,6 +955,95 @@
     line-height: 1.8; font-weight: 300;
   }
 
+  /* ── 確認画面 ── */
+  #confirm {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #e8e8e8; overflow-y: auto;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  #confirm.show { opacity: 1; pointer-events: auto; }
+  #confirm-title,
+  #confirm-body,
+  #confirm-reply {
+    transition: filter 0.4s ease, opacity 0.4s ease;
+  }
+  body.blob-pressing #confirm-title,
+  body.blob-pressing #confirm-body,
+  body.blob-pressing #confirm-reply {
+    filter: blur(5px) brightness(1.06);
+    opacity: 0.55;
+  }
+  #confirm-inner {
+    max-width: 540px; margin: 0 auto;
+    padding: 56px 24px 0;
+    display: flex; flex-direction: column; gap: 28px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  #confirm-title {
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: #888; margin: 0;
+  }
+  #confirm-body { display: flex; flex-direction: column; }
+  .confirm-row {
+    display: flex; gap: 20px; align-items: baseline;
+    padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.07);
+  }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em;
+    color: #aaa; min-width: 72px; padding-top: 2px;
+  }
+  .confirm-value {
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 15px; color: var(--fg); flex: 1;
+    line-height: 1.6; word-break: break-all;
+  }
+  #confirm-btn-area {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin-top: auto;
+    padding-top: 32px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  }
+  #confirm-hint {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; color: #aaa; letter-spacing: 0.08em;
+    transition: opacity 0.3s;
+  }
+  #confirm-hint.hidden { opacity: 0; pointer-events: none; }
+  #confirm-reply {
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 14px; color: var(--fg); min-height: 1.5em; text-align: center;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #confirm-reply.show { opacity: 1; }
+  #confirm-btn-wrap {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 120px; height: 120px;
+  }
+  #confirm-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%; border: none;
+    background: #f2f2f2;
+    box-shadow: 6px 6px 14px rgba(0,0,0,0.10), -4px -4px 10px rgba(255,255,255,0.85);
+    color: #888;
+    font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif;
+    font-size: 13px; cursor: pointer;
+    position: relative; z-index: 2;
+    transition: box-shadow 0.15s;
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #confirm-btn.pressing {
+    box-shadow: inset 3px 3px 8px rgba(204,0,0,0.18), inset -2px -2px 6px rgba(255,255,255,0.7), 0 0 0 2px rgba(204,0,0,0.15);
+  }
+  #confirm-fan {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+
   footer {
     margin-top: 80px;
     font-family: 'Space Grotesk', sans-serif;
@@ -734,7 +1052,74 @@
     text-transform: none;
   }
 
+  /* ── 送信アニメーション ── */
+  #anim-stage {
+    position: fixed; inset: 0; z-index: 20000;
+    display: none; pointer-events: none; overflow: hidden;
+  }
+  #anim-stage.active { display: block; }
+  #anim-bg {
+    position: absolute; inset: 0;
+    background: rgba(232,232,232,0);
+    transition: background 0.9s ease;
+  }
+  #anim-bg.darken { background: rgba(232,232,232,0.94); }
+
+  /* グリッド反転アニメーション */
+  #fold-scene {
+    position: absolute;
+  }
+  @keyframes gridFlip {
+    0%   { transform: rotateY(0deg);   animation-timing-function: ease-in; }
+    50%  { transform: rotateY(90deg);  animation-timing-function: ease-out; }
+    100% { transform: rotateY(180deg); }
+  }
+  @keyframes frontFaceDark {
+    0%   { filter: brightness(1.0); }
+    25%  { filter: brightness(0.84); }
+    50%  { filter: brightness(0.45); }
+    100% { filter: brightness(0.45); }
+  }
+  @keyframes backFaceBright {
+    0%   { filter: brightness(0.45); }
+    50%  { filter: brightness(0.45); }
+    75%  { filter: brightness(0.84); }
+    100% { filter: brightness(1.0); }
+  }
+  .touch-blob {
+    position: fixed; inset: 0; pointer-events: none; z-index: 99999;
+    opacity: 0; transition: opacity 0.2s ease-out;
+    filter: url(#tb-goo); overflow: visible;
+  }
+  .touch-blob.visible { opacity: 1; }
+  .tb-head, .tb-tail {
+    position: absolute; border-radius: 50%; background: rgb(204,0,0);
+    transform: translate(-50%, -50%); will-change: left, top;
+  }
+  @keyframes circleStroke {
+    from { stroke-dashoffset: 125.66; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes checkStroke {
+    from { stroke-dashoffset: 26; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
 </style>
+
+<!-- gooey filter for touch blob -->
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <defs>
+    <filter id="tb-goo" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="11" result="blur"/>
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 28 -12" result="goo"/>
+    </filter>
+  </defs>
+</svg>
 
 <svg class="bg-deco" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
   <!-- 年 motif — top left (horizontal strokes + vertical) -->
@@ -770,7 +1155,23 @@
   </g>
 </svg>
 
-<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+<div id="progress-bar-wrap"><div id="progress-bar-l"></div><div id="progress-bar-r"></div></div><div id="progress-pct">0%</div>
+
+<!-- イントロ画面 -->
+<div id="intro">
+  <div id="intro-inner">
+    <p id="intro-q">申し込みの準備は<br>いいですか？</p>
+    <p id="intro-hint"></p>
+    <div id="intro-cs">
+      <div class="intro-ripple"></div>
+      <div class="intro-ripple"></div>
+      <div id="intro-fan"></div>
+      <button id="intro-btn" aria-label="選択する">選ぶ</button>
+    </div>
+    <p id="intro-reply"></p>
+  </div>
+</div>
+
 <div class="wrap">
 
   <header>
@@ -804,6 +1205,7 @@
         <div class="custom-select" id="cs-renmeCount" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
           <input type="hidden" id="renmeCount" name="renmeCount" value="0">
           <span class="cs-display cs-placeholder">なし</span>
+          <p class="cs-inner-hint">ボタンを押したまま引っ張って選択</p>
           <svg class="cs-chevron" viewBox="0 0 12 7" width="12" height="7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5 5-5"/></svg>
           <ul class="cs-list" role="listbox">
             <li class="cs-item cs-selected" data-value="0">なし</li>
@@ -856,6 +1258,7 @@
         <div class="custom-select" id="cs-contactMethod" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox">
           <input type="hidden" id="contactMethod" name="contactMethod" value="">
           <span class="cs-display cs-placeholder">選択してください</span>
+          <p class="cs-inner-hint">ボタンを押したまま引っ張って選択</p>
           <svg class="cs-chevron" viewBox="0 0 12 7" width="12" height="7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5 5-5"/></svg>
           <ul class="cs-list" role="listbox">
             <li class="cs-item" data-value="Instagram">Instagram</li>
@@ -882,11 +1285,38 @@
 
     <div class="submit-area">
       <div class="send-error" id="sendError">送信に失敗しました。時間をおいて再度お試しください。</div>
-      <button type="submit" class="btn-submit" id="submitBtn">応募する</button>
+      <button type="submit" class="btn-submit" id="submitBtn">確認画面へ</button>
       <p class="privacy">* は必須項目です</p>
     </div>
 
   </form>
+
+  <!-- 内容確認画面 -->
+  <div id="confirm">
+    <div id="confirm-inner">
+      <p id="confirm-title">確認 / Confirm</p>
+      <div id="confirm-body">
+        <div class="confirm-row"><span class="confirm-label">お名前</span><span class="confirm-value" id="cv-name"></span></div>
+        <div class="confirm-row" id="cv-renme-row"><span class="confirm-label">連名</span><span class="confirm-value" id="cv-renme"></span></div>
+        <div class="confirm-row"><span class="confirm-label">郵便番号</span><span class="confirm-value" id="cv-zip"></span></div>
+        <div class="confirm-row"><span class="confirm-label">住所</span><span class="confirm-value" id="cv-addr"></span></div>
+        <div class="confirm-row"><span class="confirm-label">連絡方法</span><span class="confirm-value" id="cv-method"></span></div>
+        <div class="confirm-row"><span class="confirm-label">連絡先</span><span class="confirm-value" id="cv-contact"></span></div>
+        <div class="confirm-row" id="cv-msg-row"><span class="confirm-label">メッセージ</span><span class="confirm-value" id="cv-msg"></span></div>
+      </div>
+      <div id="confirm-btn-area">
+        <div id="confirm-hint">ボタンを押したまま引っ張って選択</div>
+        <div id="confirm-reply"></div>
+        <div id="confirm-btn-wrap">
+          <div class="intro-ripple"></div>
+          <div class="intro-ripple"></div>
+          <div id="confirm-fan"></div>
+          <button type="button" id="confirm-btn">選ぶ</button>
+        </div>
+        <p id="confirmSendError" style="display:none;color:#CC0000;font-size:12px;text-align:center;margin:0;">送信に失敗しました。もう一度お試しください。</p>
+      </div>
+    </div>
+  </div>
 
   <div class="success" id="success">
     <div class="success-icon">
@@ -896,12 +1326,118 @@
     <p>ご応募ありがとうございます。<br>受付完了の連絡をお送りします。</p>
   </div>
 
+  <!-- 送信アニメーションステージ -->
+  <div id="anim-stage">
+    <div id="anim-bg"></div>
+
+    <!-- fold scene (JS で動的生成) -->
+    <div id="fold-scene"></div>
+  </div>
+
   <footer>© studio yakkii</footer>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
   // Mobile: delay aurora animation until keyboard is up (~300ms after focus)
   const _isTouch = 'ontouchstart' in window;
+
+  let _blob = null, _blobHead = null, _blobTail = null;
+  let _blobX = 0, _blobY = 0, _blobTX = 0, _blobTY = 0;
+  let _blobFX = 0, _blobFY = 0;
+  let _blobRaf = null, _blobMoveFn = null, _blobEndFn = null;
+  let _blobProxies = []; // [{el, cx, cy}]
+  const _HEAD_R = 34, _TAIL_R = 19;
+
+  function _createBlob(x, y) {
+    if (_blob) _destroyBlob();
+    _blobX = x; _blobY = y; _blobTX = x; _blobTY = y;
+    _blobFX = x; _blobFY = y;
+    _blob = document.createElement('div');
+    _blob.className = 'touch-blob';
+    _blobHead = document.createElement('div');
+    _blobHead.className = 'tb-head';
+    _blobHead.style.cssText = `width:${_HEAD_R*2}px;height:${_HEAD_R*2}px;left:${x}px;top:${y}px`;
+    _blobTail = document.createElement('div');
+    _blobTail.className = 'tb-tail';
+    _blobTail.style.cssText = `width:${_TAIL_R*2}px;height:${_TAIL_R*2}px;left:${x}px;top:${y}px`;
+    _blob.appendChild(_blobHead);
+    _blob.appendChild(_blobTail);
+    document.body.appendChild(_blob);
+    document.body.classList.add('blob-pressing');
+    requestAnimationFrame(() => _blob && _blob.classList.add('visible'));
+
+    _blobRaf = requestAnimationFrame(function tick() {
+      _blobFX += (_blobTX - _blobFX) * 0.30;
+      _blobFY += (_blobTY - _blobFY) * 0.30;
+      _blobX  += (_blobTX - _blobX)  * 0.07;
+      _blobY  += (_blobTY - _blobY)  * 0.07;
+
+      let drawFX = _blobFX, drawFY = _blobFY;
+      let magDist = Infinity, magIdx = -1;
+      if (_blobProxies.length) {
+        _blobProxies.forEach((p, i) => {
+          const d = Math.hypot(_blobFX - p.cx, _blobFY - p.cy);
+          if (d < magDist) { magDist = d; magIdx = i; }
+        });
+        if (magIdx >= 0 && magDist < 130 && magDist > 0) {
+          const mp = _blobProxies[magIdx];
+          const t = Math.pow(1 - magDist / 130, 1.8);
+          drawFX += (mp.cx - _blobFX) * t * 0.55;
+          drawFY += (mp.cy - _blobFY) * t * 0.55;
+        }
+      }
+
+      if (_blobHead) { _blobHead.style.left = drawFX+'px'; _blobHead.style.top = drawFY+'px'; }
+      if (_blobTail) { _blobTail.style.left = _blobX+'px'; _blobTail.style.top = _blobY+'px'; }
+
+      if (_blobProxies.length && magIdx >= 0) {
+        _blobProxies.forEach((p, i) => {
+          p.el.classList.toggle('active', i === magIdx && magDist < 88);
+        });
+      }
+      _blobRaf = requestAnimationFrame(tick);
+    });
+
+    _blobMoveFn = e => {
+      if (e.touches.length) { _blobTX = e.touches[0].clientX; _blobTY = e.touches[0].clientY; }
+    };
+    _blobEndFn = () => _destroyBlob();
+    document.addEventListener('touchmove',   _blobMoveFn, { passive: true });
+    document.addEventListener('touchend',    _blobEndFn,  { passive: true });
+    document.addEventListener('touchcancel', _blobEndFn,  { passive: true });
+  }
+
+  function _addBlobProxies(selector) {
+    if (!_blob) return;
+    setTimeout(() => {
+      if (!_blob) return;
+      document.querySelectorAll(selector).forEach(item => {
+        const rect = item.getBoundingClientRect();
+        if (rect.width < 2) return;
+        _blobProxies.push({
+          el: item,
+          cx: rect.left + rect.width  / 2,
+          cy: rect.top  + rect.height / 2
+        });
+      });
+    }, 380);
+  }
+
+  function _destroyBlob() {
+    if (!_blob) return;
+    if (_blobRaf) { cancelAnimationFrame(_blobRaf); _blobRaf = null; }
+    document.removeEventListener('touchmove',   _blobMoveFn);
+    document.removeEventListener('touchend',    _blobEndFn);
+    document.removeEventListener('touchcancel', _blobEndFn);
+    _blobMoveFn = null; _blobEndFn = null;
+    _blobProxies.forEach(p => p.el.classList.remove('active'));
+    _blobHead = null; _blobTail = null; _blobProxies = [];
+    const b = _blob; _blob = null;
+    document.body.classList.remove('blob-pressing');
+    b.style.opacity = '0';
+    setTimeout(() => b.remove(), 220);
+  }
 
   // Aurora wrap utility — reused for static and dynamic fields
   function applyAuroraWrap(root) {
@@ -941,6 +1477,7 @@
     cs.addEventListener('blur', () => { wrap?.classList.remove('focused'); cs.setAttribute('aria-expanded','false'); });
 
     cs.addEventListener('click', function(e) {
+      if (cs._fanActive) return;
       if (e.target.closest('.cs-item')) return;
       const open = this.getAttribute('aria-expanded') === 'true';
       if (!open) {
@@ -983,41 +1520,68 @@
 
   // Long-press slide-select (touch only)
   function initLongPressSelect(csId) {
-    if (!('ontouchstart' in window)) return;
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const cs = document.getElementById(csId);
     if (!cs) return;
     const hidden = cs.querySelector('input[type="hidden"]');
     const disp = cs.querySelector('.cs-display');
 
-    // 説明文を入力欄の内側に追加
-    const hintEl = document.createElement('span');
-    hintEl.className = 'cs-inner-hint';
-    hintEl.innerHTML = 'ボタンを長押しとスライドで選択';
-    cs.appendChild(hintEl);
+    cs._fanActive = true; // 標準ドロップダウンを無効化
 
-    // タップでドロップダウンが開かないよう click を無効化
-    cs.addEventListener('click', e => e.stopImmediatePropagation(), true);
+    const innerHint = cs.querySelector('.cs-inner-hint');
+    if (innerHint) {
+      innerHint.textContent = isTouch ? 'ボタンを押したまま引っ張って選択' : 'クリックして選択';
+    }
+
+    if (isTouch) {
+      disp.textContent = '選ぶ';
+      disp.classList.remove('cs-placeholder');
+      // タップでドロップダウンが開かないよう click を無効化
+      cs.addEventListener('click', e => e.stopImmediatePropagation(), true);
+    }
 
     let timer = null, popup = null, hovered = null, active = false;
     let sx = 0, sy = 0, startTouch = null;
 
-    function buildFanMenu(touchX, touchY) {
+    function buildFanMenu(touchX, touchY, forceVertical) {
       const vw = window.innerWidth, vh = window.innerHeight;
       const isRightSide = touchX > vw / 2;
       const centerDeg = isRightSide ? 180 : 0;
       const items = Array.from(cs.querySelectorAll('.cs-item'));
       if (csId === 'cs-contactMethod') items.reverse();
       const n = items.length;
-      const radius = 170;
-      const circleStepDeg = 2 * Math.asin((54 / 2 + 12) / radius) * 180 / Math.PI;
-      const pillStepDeg = (50 + 16) * 180 / (Math.PI * radius);
-      const stepDeg = Math.max(circleStepDeg, pillStepDeg);
+      const radius = 200;
+
+      // 等視覚ギャップ角度計算: 各ペアの向きに応じた可変ステップで辺間距離を均等化
+      function equalGapAngles(iw, ih, gap) {
+        if (n <= 1) return [centerDeg];
+        const hw = iw / 2, hh = ih / 2;
+        let angles = Array.from({length: n}, (_, i) => centerDeg + (i - (n - 1) / 2) * 25);
+        for (let iter = 0; iter < 25; iter++) {
+          const steps = [];
+          for (let i = 0; i < n - 1; i++) {
+            const dir = ((angles[i] + angles[i + 1]) / 2 + 90) * Math.PI / 180;
+            const cd = Math.abs(Math.cos(dir)), sd = Math.abs(Math.sin(dir));
+            const he = cd < 1e-4 ? hh : sd < 1e-4 ? hw : Math.min(hw / cd, hh / sd);
+            steps.push(2 * Math.asin(Math.min((2 * he + gap) / (2 * radius), 1)) * 180 / Math.PI);
+          }
+          const total = steps.reduce((a, b) => a + b, 0);
+          const prev = angles.slice();
+          angles = [centerDeg - total / 2];
+          for (let i = 0; i < n - 1; i++) angles.push(angles[i] + steps[i]);
+          if (angles.every((a, i) => Math.abs(a - prev[i]) < 0.05)) break;
+        }
+        return angles;
+      }
+
+      // PC用: 均等ステップ（横並び用途のみ）
+      const stepDeg = 2 * Math.asin(Math.min(100 / (2 * radius), 1)) * 180 / Math.PI;
       const spread = Math.max(n - 1, 1) * stepDeg;
 
       // 基本角度（回転前）
-      const baseAngles = items.map((_, i) =>
-        n === 1 ? centerDeg : centerDeg - spread / 2 + (i / (n - 1)) * spread
-      );
+      const baseAngles = forceVertical
+        ? items.map((_, i) => n === 1 ? centerDeg : centerDeg - spread / 2 + (i / (n - 1)) * spread)
+        : equalGapAngles(80, 54, 16);
 
       const pH = 25, pW = 72, mg = 14;
 
@@ -1044,23 +1608,38 @@
         bestRot = dir * hi;
       }
 
-      // 回転を適用してオフセットを確定
-      const offsets = baseAngles.map(a => {
-        const angle = a + bestRot;
-        const rad = angle * Math.PI / 180;
-        return { dx: Math.round(radius * Math.cos(rad)), dy: Math.round(radius * Math.sin(rad)), rad };
-      });
+      // オフセットを確定
+      let offsets;
+      if (forceVertical) {
+        // PC: 横並び
+        offsets = items.map((_, i) => ({ dx: Math.round((i - (n - 1) / 2) * 140), dy: 30, rad: 0 }));
+      } else {
+        // スマホ: 円弧（等コード距離）
+        const angles = baseAngles.map(a => a + bestRot);
+        offsets = items.map((_, i) => ({
+          dx: Math.round(radius * Math.cos(angles[i] * Math.PI / 180)),
+          dy: Math.round(radius * Math.sin(angles[i] * Math.PI / 180)),
+          rad: 0
+        }));
+      }
 
-      // 回転でも残るはみ出し（主に水平）を最小シフトで補正
-      let ox = touchX, oy = touchY;
-      const maxY = Math.max(...offsets.map(o => oy + o.dy + pH));
-      const minY = Math.min(...offsets.map(o => oy + o.dy - pH));
-      const maxX = Math.max(...offsets.map(o => ox + o.dx + pW));
-      const minX = Math.min(...offsets.map(o => ox + o.dx - pW));
-      if (maxY > vh - mg) oy -= maxY - (vh - mg);
-      if (minY < mg)      oy += mg - minY;
-      if (maxX > vw - mg) ox -= maxX - (vw - mg);
-      if (minX < mg)      ox += mg - minX;
+      // 残りはみ出しを補正（X方向は回転後に両サイドが競合しうるのでクランプ+センタリング）
+      const dxMax = Math.max(...offsets.map(o => o.dx));
+      const dxMin = Math.min(...offsets.map(o => o.dx));
+      const dyMax = Math.max(...offsets.map(o => o.dy));
+      const dyMin = Math.min(...offsets.map(o => o.dy));
+
+      const xHi = vw - mg - pW - dxMax;
+      const xLo = mg + pW - dxMin;
+      let ox = xLo > xHi
+        ? Math.round((xLo + xHi) / 2)
+        : Math.max(xLo, Math.min(xHi, touchX));
+
+      const yHi = vh - mg - pH - dyMax;
+      const yLo = mg + pH - dyMin;
+      let oy = yLo > yHi
+        ? Math.round((yLo + yHi) / 2)
+        : Math.max(yLo, Math.min(yHi, touchY));
 
       const overlay = document.createElement('div');
       overlay.className = 'cs-fan-overlay';
@@ -1069,10 +1648,12 @@
       dot.className = 'cs-fan-dot';
       dot.style.left = touchX + 'px';
       dot.style.top = touchY + 'px';
-      overlay.appendChild(dot);
+      if (!forceVertical) overlay.appendChild(dot);
 
-      // 隣接アイテム間の弦の半分 = 重ならない最大ヒット円半径
-      const hitR = radius * Math.sin(stepDeg / 2 * Math.PI / 180);
+      // 隣接アイテム間の最小角度ステップからヒット円半径を算出
+      const minStep = forceVertical ? stepDeg
+        : (n > 1 ? Math.min(...baseAngles.slice(1).map((a, i) => a - baseAngles[i])) : 30);
+      const hitR = radius * Math.sin(minStep / 2 * Math.PI / 180);
 
       const fanItems = [];
       offsets.forEach((o, i) => {
@@ -1106,6 +1687,13 @@
         });
       });
 
+      if (!isTouch) {
+        fanItems.forEach(btn => {
+          btn.style.cursor = 'pointer';
+          btn.addEventListener('click', e => { e.stopPropagation(); selectItem(btn); closePopup(); });
+        });
+      }
+
       return { overlay, fanItems };
     }
 
@@ -1126,9 +1714,9 @@
       return null;
     }
 
-    function openPopup(touch) {
+    function openPopup(touch, forceVertical) {
       cs.setAttribute('aria-expanded', 'false');
-      const { overlay } = buildFanMenu(touch.clientX, touch.clientY);
+      const { overlay } = buildFanMenu(touch.clientX, touch.clientY, forceVertical);
       popup = overlay;
       active = true;
     }
@@ -1140,8 +1728,8 @@
       const n = items.length;
       items.forEach((el, i) => {
         const delay = (n - 1 - i) * 40;
-        el.style.transition = `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms, opacity 0.3s ease ${delay}ms`;
-        el.style.transform = 'translate(-50%, -50%) scale(0)';
+        el.style.transition = `transform 0.25s ease ${delay}ms, opacity 0.25s ease ${delay}ms`;
+        el.style.transform = el._baseTransform.replace('scale(1)', 'scale(0)');
         el.style.opacity = '0';
       });
       setTimeout(() => p.remove(), 400 + (n - 1) * 40);
@@ -1160,6 +1748,7 @@
       hidden.dispatchEvent(new Event('change'));
     }
 
+    if (isTouch) {
     let moveFn, endFn, cancelFn;
 
     cs.addEventListener('touchstart', function(e) {
@@ -1219,17 +1808,44 @@
       cs.classList.add('cs-pressing');
       timer = setTimeout(() => {
         timer = null;
+        _createBlob(sx, sy);
         const focused = document.activeElement;
         const hadKeyboard = focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.isContentEditable);
         if (hadKeyboard) {
           focused.blur();
-          // キーボードが下がるのを待ってからポップアップを開く
-          setTimeout(() => openPopup(startTouch), 280);
+          setTimeout(() => { openPopup(startTouch); _addBlobProxies('.cs-fan-item'); }, 280);
         } else {
           openPopup(startTouch);
+          _addBlobProxies('.cs-fan-item');
         }
       }, 250);
     }, { passive: true });
+    } else {
+      // PC: クリックでファン展開、もう一度クリックまたは外クリックで閉じる
+      cs.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (popup) { closePopup(); return; }
+        const rect = cs.getBoundingClientRect();
+        openPopup({ clientX: rect.left + rect.width / 2, clientY: rect.bottom }, true);
+      });
+      document.addEventListener('click', () => { if (popup) closePopup(); });
+
+      // スクロールで閉じる
+      window.addEventListener('scroll', () => { if (popup) closePopup(); }, { passive: true });
+
+      // ボタンから大きく離れたら閉じる（200px）
+      document.addEventListener('mousemove', function(e) {
+        if (!popup) return;
+        const items = Array.from(popup.querySelectorAll('.cs-fan-item'));
+        const nearest = items.reduce((min, el) => {
+          const r = el.getBoundingClientRect();
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          const d = Math.hypot(e.clientX - cx, e.clientY - cy);
+          return d < min ? d : min;
+        }, Infinity);
+        if (nearest > 200) closePopup();
+      });
+    }
   }
 
   initLongPressSelect('cs-renmeCount');
@@ -1237,6 +1853,7 @@
 
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqmh9byD8x-WNq-EX3zLHGdLMONvZVBVF42GPuqmm1H6QJDtl1pf1PwlyXi8vTJaXgXQ/exec';
   const TOKEN = 'yakkii2027';
+  const TEST_MODE = false;
 
   // Dynamic 連名 fields
   document.getElementById('renmeCount').addEventListener('change', function() {
@@ -1409,13 +2026,9 @@
 
   // 進捗バー
   (function() {
-    const wrap = document.getElementById('progress-bar-wrap');
-    if (window.visualViewport) {
-      const syncBar = () => { wrap.style.top = window.visualViewport.offsetTop + 'px'; };
-      window.visualViewport.addEventListener('resize', syncBar);
-      window.visualViewport.addEventListener('scroll', syncBar);
-    }
-    const bar = document.getElementById('progress-bar');
+    const barL = document.getElementById('progress-bar-l');
+    const barR = document.getElementById('progress-bar-r');
+    const pct = document.getElementById('progress-pct');
     const checks = [
       () => document.getElementById('sei').value.trim() !== '',
       () => document.getElementById('mei').value.trim() !== '',
@@ -1423,9 +2036,31 @@
       () => document.getElementById('contactMethod').value !== '',
       () => document.getElementById('contact').value.trim() !== '',
     ];
+    let currentPct = 0;
+    let pctTimer = null;
     function updateBar() {
       const filled = checks.filter(fn => fn()).length;
-      bar.style.width = (filled / checks.length * 100) + '%';
+      const targetPct = Math.round(filled / checks.length * 100);
+      barL.style.height = targetPct + '%';
+      barR.style.height = targetPct + '%';
+      pct.style.top = `min(${targetPct}vh, calc(100vh - 16px))`;
+      if (pctTimer) clearInterval(pctTimer);
+      if (targetPct === currentPct) return;
+      const step = targetPct > currentPct ? 1 : -1;
+      const msPerStep = 400 / Math.abs(targetPct - currentPct);
+      pctTimer = setInterval(() => {
+        currentPct += step;
+        pct.textContent = currentPct + '%';
+        if (currentPct === 0) {
+          pct.classList.remove('visible');
+        } else {
+          pct.classList.add('visible');
+        }
+        if (currentPct === targetPct) {
+          clearInterval(pctTimer);
+          pctTimer = null;
+        }
+      }, Math.max(msPerStep, 10));
     }
     ['sei','mei','street','contact'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateBar);
@@ -1470,15 +2105,15 @@
       return;
     }
 
-    const btn = document.getElementById('submitBtn');
-    btn.textContent = '送信中…';
-    btn.disabled = true;
+    const contactFmt = (contactMethod === 'メッセージ')
+      ? (d => d.length > 7 ? d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7) : d.length > 3 ? d.slice(0,3)+'-'+d.slice(3) : d)(contact.replace(/\D/g,'')).slice(0,13)
+      : contact;
 
     const payload = {
       token: TOKEN,
       timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
       sei, mei, zip, pref, city, street, contactMethod, message,
-      contact: (contactMethod === 'メッセージ') ? (d => d.length > 7 ? d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7) : d.length > 3 ? d.slice(0,3)+'-'+d.slice(3) : d)(contact.replace(/\D/g,'')).slice(0,13) : contact,
+      contact: contactFmt,
       renmeCount: renmeCount > 0 ? renmeCount + '名' : 'なし',
       renme1sei: renmeData[0]?.sei || '', renme1mei: renmeData[0]?.mei || '',
       renme2sei: renmeData[1]?.sei || '', renme2mei: renmeData[1]?.mei || '',
@@ -1487,19 +2122,723 @@
       renme5sei: renmeData[4]?.sei || '', renme5mei: renmeData[4]?.mei || '',
     };
 
-    try {
-      if (SCRIPT_URL) {
-        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-      }
-      document.getElementById('form').style.display = 'none';
-      document.getElementById('success').classList.add('show');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      btn.textContent = '応募する';
-      btn.disabled = false;
-      document.getElementById('sendError').style.display = 'block';
+    // 確認画面に値を反映
+    document.getElementById('cv-name').textContent = sei + ' ' + mei + ' 様';
+    document.getElementById('cv-zip').textContent = '〒' + zip.slice(0,3) + '-' + zip.slice(3);
+    document.getElementById('cv-addr').textContent = pref + city + ' ' + street;
+    if (renmeCount > 0) {
+      document.getElementById('cv-renme').textContent = renmeData.map(r => r.sei + ' ' + r.mei + ' 様').join('、');
+      document.getElementById('cv-renme-row').style.display = '';
+    } else {
+      document.getElementById('cv-renme-row').style.display = 'none';
     }
+    document.getElementById('cv-method').textContent = contactMethod;
+    document.getElementById('cv-contact').textContent = contactFmt;
+    if (message) {
+      document.getElementById('cv-msg').textContent = message;
+      document.getElementById('cv-msg-row').style.display = '';
+    } else {
+      document.getElementById('cv-msg-row').style.display = 'none';
+    }
+
+    // 確認画面を表示
+    window._confirmPayload = payload;
+    document.getElementById('confirm').classList.add('show');
+    document.body.classList.add('confirm-showing');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+
+  // 送信アニメーション（格子にY軸回転で白くなって送信完了）
+  async function playSubmitAnimation() {
+    const stage     = document.getElementById('anim-stage');
+    const bg        = document.getElementById('anim-bg');
+    const foldScene = document.getElementById('fold-scene');
+    const confirmEl = document.getElementById('confirm');
+
+    foldScene.innerHTML = '';
+    foldScene.removeAttribute('style');
+    bg.classList.remove('darken');
+    stage.classList.add('active');
+    setTimeout(() => bg.classList.add('darken'), 50);
+
+    let imgUrl = null;
+    try {
+      const cap = await html2canvas(confirmEl, {
+        scale: Math.min(window.devicePixelRatio || 1, 2),
+        useCORS: true,
+        logging: false,
+        backgroundColor: null,
+      });
+      imgUrl = cap.toDataURL('image/png');
+    } catch (e) {}
+
+    confirmEl.style.opacity = '0';
+    confirmEl.style.pointerEvents = 'none';
+
+    const rect = confirmEl.getBoundingClientRect();
+    const W = rect.width;
+    const H = rect.height;
+
+    // 正方形マスのグリッドを計算
+    const cellSize = 62;
+    const cols = Math.round(W / cellSize);
+    const rows = Math.round(H / cellSize);
+    const cw = W / cols;
+    const ch = H / rows;
+
+    // fold-scene の設定
+    Object.assign(foldScene.style, {
+      left:        rect.left + 'px',
+      top:         rect.top  + 'px',
+      width:       W + 'px',
+      height:      H + 'px',
+      overflow:    'hidden',
+      perspective: (W * 2.5) + 'px',
+    });
+
+    // タイミング定数
+    const linesDur   = 1.0;                // 線が伸びる時間（秒）
+    const linesPause = 0.1;               // 線が揃ってからflip開始までの間（秒）
+    const initDelay  = linesDur + linesPause; // flip開始タイミング（秒）
+    const stepDelay  = 0.036;            // 対角ステップごとの遅延（秒）
+    const flipDur    = 0.52;             // 1マスの反転時間（秒）
+    const maxDiag    = cols + rows - 2;
+
+    // グリッドマスを生成
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = document.createElement('div');
+        const delay = initDelay + (c + r) * stepDelay;
+        Object.assign(cell.style, {
+          position:        'absolute',
+          left:            (c * cw) + 'px',
+          top:             (r * ch) + 'px',
+          width:           cw + 'px',
+          height:          ch + 'px',
+          transformStyle:  'preserve-3d',
+          animationName:   'gridFlip',
+          animationDuration:       flipDur + 's',
+          animationDelay:          delay + 's',
+          animationTimingFunction: 'cubic-bezier(0.42,0,0.18,1)',
+          animationFillMode:       'forwards',
+        });
+
+        // 表面（確認画面の断片）
+        const front = document.createElement('div');
+        Object.assign(front.style, {
+          position:               'absolute',
+          inset:                  '0',
+          backfaceVisibility:     'hidden',
+          background:             imgUrl
+            ? `url('${imgUrl}') no-repeat -${c * cw}px -${r * ch}px / ${W}px ${H}px`
+            : '#f5f5f3',
+          animationName:          'frontFaceDark',
+          animationDuration:      flipDur + 's',
+          animationDelay:         delay + 's',
+          animationTimingFunction:'linear',
+          animationFillMode:      'both',
+        });
+        cell.appendChild(front);
+
+        // 裏面（無地・背景色と同化）
+        const back = document.createElement('div');
+        Object.assign(back.style, {
+          position:               'absolute',
+          inset:                  '0',
+          backfaceVisibility:     'hidden',
+          background:             '#e8e8e8',
+          transform:              'rotateY(180deg)',
+          animationName:          'backFaceBright',
+          animationDuration:      flipDur + 's',
+          animationDelay:         delay + 's',
+          animationTimingFunction:'linear',
+          animationFillMode:      'both',
+        });
+        cell.appendChild(back);
+
+        foldScene.appendChild(cell);
+      }
+    }
+
+    // グリッド線アニメーション（cells の後に追加 → 上に重なる）
+    const lineEls = [];
+
+    // 縦線（cols+1本）: 上から下へ伸びる
+    for (let c = 0; c <= cols; c++) {
+      const line = document.createElement('div');
+      Object.assign(line.style, {
+        position:        'absolute',
+        left:            (c * cw - 0.5) + 'px',
+        top:             '0',
+        width:           '1px',
+        height:          H + 'px',
+        background:      'rgba(204,0,0,0.5)',
+        transformOrigin: 'top center',
+        transform:       'scaleY(0)',
+        pointerEvents:   'none',
+      });
+      foldScene.appendChild(line);
+      lineEls.push(line);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        line.style.transition = `transform ${linesDur}s cubic-bezier(0.4,0,0.2,1)`;
+        line.style.transform  = 'scaleY(1)';
+      }));
+    }
+
+    // 横線（rows+1本）: 左から右へ伸びる
+    for (let r = 0; r <= rows; r++) {
+      const line = document.createElement('div');
+      Object.assign(line.style, {
+        position:        'absolute',
+        left:            '0',
+        top:             (r * ch - 0.5) + 'px',
+        width:           W + 'px',
+        height:          '1px',
+        background:      'rgba(204,0,0,0.5)',
+        transformOrigin: 'left center',
+        transform:       'scaleX(0)',
+        pointerEvents:   'none',
+      });
+      foldScene.appendChild(line);
+      lineEls.push(line);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        line.style.transition = `transform ${linesDur}s cubic-bezier(0.4,0,0.2,1)`;
+        line.style.transform  = 'scaleX(1)';
+      }));
+    }
+
+    // flip 開始と同時に線をフェードアウト
+    setTimeout(() => {
+      lineEls.forEach(l => {
+        l.style.transition = 'opacity 0.18s ease-out';
+        l.style.opacity    = '0';
+      });
+    }, initDelay * 1000);
+
+    // 最後のマスが反転し終わるまでの時間
+    const lastCellMs = (initDelay + maxDiag * stepDelay + flipDur) * 1000;
+
+    return new Promise(resolve => {
+      // 全マス反転後 → 完了画面をフェードイン
+      setTimeout(() => {
+        const complete = document.createElement('div');
+        Object.assign(complete.style, {
+          position:       'absolute',
+          inset:          '0',
+          display:        'flex',
+          flexDirection:  'column',
+          alignItems:     'center',
+          justifyContent: 'center',
+          background:     '#e8e8e8',
+          pointerEvents:  'none',
+          zIndex:         '10',
+        });
+
+        // SVG: circle + checkmark
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('width', '52');
+        svg.setAttribute('height', '52');
+        svg.setAttribute('viewBox', '0 0 52 52');
+        svg.style.marginBottom = '28px';
+        svg.style.overflow = 'visible';
+
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', '26');
+        circle.setAttribute('cy', '26');
+        circle.setAttribute('r', '20');
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', 'rgba(204,0,0,0.55)');
+        circle.setAttribute('stroke-width', '1');
+        circle.style.strokeDasharray = '125.66';
+        circle.style.strokeDashoffset = '125.66';
+        circle.style.transformOrigin = '26px 26px';
+        circle.style.transform = 'rotate(-90deg)';
+        circle.style.animation = 'circleStroke 0.6s cubic-bezier(0.4,0,0.2,1) 0.1s forwards';
+        svg.appendChild(circle);
+
+        const check = document.createElementNS(svgNS, 'polyline');
+        check.setAttribute('points', '17,27 23,33 35,21');
+        check.setAttribute('fill', 'none');
+        check.setAttribute('stroke', 'rgba(204,0,0,0.65)');
+        check.setAttribute('stroke-width', '1.2');
+        check.setAttribute('stroke-linecap', 'round');
+        check.setAttribute('stroke-linejoin', 'round');
+        check.style.strokeDasharray = '26';
+        check.style.strokeDashoffset = '26';
+        check.style.animation = 'checkStroke 0.35s cubic-bezier(0.4,0,0.2,1) 0.65s forwards';
+        svg.appendChild(check);
+
+        complete.appendChild(svg);
+
+        // 送信完了
+        const title = document.createElement('p');
+        Object.assign(title.style, {
+          fontSize:      '26px',
+          letterSpacing: '0.5em',
+          textIndent:    '0.5em',
+          color:         '#2a2918',
+          fontWeight:    '400',
+          fontFamily:    "'Zen Kaku Gothic New', sans-serif",
+          margin:        '0 0 22px',
+          opacity:       '0',
+          animation:     'fadeSlideUp 0.5s ease-out 0.9s forwards',
+        });
+        title.textContent = '送信完了';
+        complete.appendChild(title);
+
+        // サブテキスト
+        const subStyle = {
+          fontSize:      '14px',
+          letterSpacing: '0.08em',
+          color:         'rgba(42,41,24,0.38)',
+          fontFamily:    "'Zen Kaku Gothic New', sans-serif",
+          margin:        '0 0 4px',
+          opacity:       '0',
+        };
+
+        const sub1 = document.createElement('p');
+        Object.assign(sub1.style, subStyle);
+        sub1.style.animation = 'fadeSlideUp 0.5s ease-out 1.05s forwards';
+        sub1.textContent = 'ご応募ありがとうございます。';
+        complete.appendChild(sub1);
+
+        const sub2 = document.createElement('p');
+        Object.assign(sub2.style, subStyle);
+        sub2.style.animation = 'fadeSlideUp 0.5s ease-out 1.15s forwards';
+        sub2.textContent = '後ほど応募完了のご連絡をお送りします。';
+        complete.appendChild(sub2);
+
+        foldScene.appendChild(complete);
+        resolve();
+      }, lastCellMs);
+    });
+  }
+
+  // 確認画面ファンボタン
+  (function() {
+    const btn = document.getElementById('confirm-btn');
+    const fan = document.getElementById('confirm-fan');
+    const hint = document.getElementById('confirm-hint');
+    const reply = document.getElementById('confirm-reply');
+
+    const options = [
+      { label: '修正する', action: 'back' },
+      { label: '送信する', action: 'send' },
+    ];
+    const angles = [-120, -60];
+    const radius = 140;
+    let items = [];
+    let fanOpen = false;
+    let activeIdx = -1;
+    let pressTimer = null;
+
+    function createFan() {
+      items = options.map((opt, i) => {
+        const el = document.createElement('div');
+        el.className = 'ifan-item';
+        el.textContent = opt.label;
+        const rad = angles[i] * Math.PI / 180;
+        el.dataset.x = Math.cos(rad) * radius;
+        el.dataset.y = Math.sin(rad) * radius;
+        fan.appendChild(el);
+        return el;
+      });
+    }
+
+    function openFan() {
+      fanOpen = true;
+      btn.classList.add('pressing');
+      hint.classList.add('hidden');
+      items.forEach((el, i) => {
+        el.style.pointerEvents = 'auto';
+        el.style.transition = '';
+        el.style.opacity = '1';
+        setTimeout(() => {
+          el.style.transform = `translate(calc(-50% + ${el.dataset.x}px), calc(-50% + ${el.dataset.y}px)) scale(1)`;
+        }, i * 40);
+      });
+    }
+
+    function closeFan() {
+      fanOpen = false;
+      btn.classList.remove('pressing');
+      items.forEach((el, i) => {
+        el.style.pointerEvents = 'none';
+        el.style.transition = `transform 0.25s ease ${i * 30}ms, opacity 0.25s ease ${i * 30}ms`;
+        el.style.transform = `translate(calc(-50% + ${el.dataset.x}px), calc(-50% + ${el.dataset.y}px)) scale(0)`;
+        el.style.opacity = '0';
+        el.classList.remove('active');
+      });
+    }
+
+    function getActiveItem(x, y) {
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let best = -1, bestDist = Infinity;
+      items.forEach((el, i) => {
+        const tx = cx + parseFloat(el.dataset.x);
+        const ty = cy + parseFloat(el.dataset.y);
+        const d = Math.hypot(x - tx, y - ty);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      return bestDist < 48 ? best : -1;
+    }
+
+    async function select(idx) {
+      closeFan();
+      const opt = options[idx];
+      if (opt.action === 'back') {
+        reply.textContent = '入力画面に戻ります。';
+        reply.classList.add('show');
+        setTimeout(() => {
+          document.getElementById('confirm').classList.remove('show');
+          document.body.classList.remove('confirm-showing');
+          reply.classList.remove('show');
+          reply.textContent = '';
+          hint.classList.remove('hidden');
+        }, 900);
+      } else {
+        btn.disabled = true;
+        hint.classList.add('hidden');
+        document.getElementById('confirmSendError').style.display = 'none';
+        const payload = window._confirmPayload || {};
+        const fetchPromise = (SCRIPT_URL && !TEST_MODE)
+          ? fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) })
+          : new Promise(r => setTimeout(r, 800));
+        try {
+          await Promise.all([playSubmitAnimation(), fetchPromise]);
+          document.getElementById('confirm').classList.remove('show');
+          document.body.classList.remove('confirm-showing');
+          document.getElementById('form').style.display = 'none';
+          document.getElementById('success').classList.add('show');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {
+          document.getElementById('anim-stage').style.display = 'none';
+          document.getElementById('anim-stage').classList.remove('active');
+          setTimeout(() => { document.getElementById('anim-stage').style.display = ''; }, 50);
+          btn.disabled = false;
+          hint.classList.remove('hidden');
+          document.getElementById('confirmSendError').style.display = 'block';
+        }
+      }
+    }
+
+    createFan();
+
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    hint.textContent = isTouch ? 'ボタンを押したまま引っ張って選択' : 'クリックして選択';
+
+    if (isTouch) {
+      btn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const tx = t.clientX, ty = t.clientY;
+        pressTimer = setTimeout(() => { _createBlob(tx, ty); openFan(); _addBlobProxies('.ifan-item'); }, 250);
+      }, { passive: false });
+
+      btn.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (!fanOpen) return;
+        const t = e.touches[0];
+        const idx = getActiveItem(t.clientX, t.clientY);
+        items.forEach((el, i) => el.classList.toggle('active', i === idx));
+        activeIdx = idx;
+      }, { passive: false });
+
+      btn.addEventListener('touchend', e => {
+        e.preventDefault();
+        clearTimeout(pressTimer);
+        if (fanOpen && activeIdx >= 0) {
+          select(activeIdx);
+        } else {
+          closeFan();
+          hint.classList.remove('hidden');
+        }
+        activeIdx = -1;
+      });
+
+    } else {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (fanOpen) { closeFan(); hint.classList.remove('hidden'); }
+        else { openFan(); }
+      });
+
+      items.forEach((el, idx) => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          select(idx);
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (fanOpen) { closeFan(); hint.classList.remove('hidden'); }
+      });
+    }
+  })();
+
+  // イントロ画面
+  (function() {
+    const intro = document.getElementById('intro');
+    const btn = document.getElementById('intro-btn');
+    const fan = document.getElementById('intro-fan');
+    const hint = document.getElementById('intro-hint');
+    const reply = document.getElementById('intro-reply');
+
+    const options = [
+      { label: '準備 OK',   reply: 'では、はじめましょう。', proceed: true },
+      { label: 'また後で',  reply: 'いつでもお待ちしています。', proceed: false },
+    ];
+
+    // ファンアイテムの配置（左右上方向に展開、2択）
+    const angles = [-130, -50]; // 左上・右上
+    const radius = 140;
+    let items = [];
+    let fanOpen = false;
+    let activeIdx = -1;
+    let pressTimer = null;
+    let startPos = null;
+
+    function createFan() {
+      items = options.map((opt, i) => {
+        const el = document.createElement('div');
+        el.className = 'ifan-item';
+        el.textContent = opt.label;
+        const rad = angles[i] * Math.PI / 180;
+        el.dataset.x = Math.cos(rad) * radius;
+        el.dataset.y = Math.sin(rad) * radius;
+        fan.appendChild(el);
+        return el;
+      });
+    }
+
+    function openFan() {
+      fanOpen = true;
+      btn.classList.add('pressing');
+      hint.classList.add('hidden');
+      items.forEach((el, i) => {
+        el.style.pointerEvents = 'auto';
+        el.style.transition = '';
+        el.style.opacity = '1';
+        setTimeout(() => {
+          el.style.transform = `translate(calc(-50% + ${el.dataset.x}px), calc(-50% + ${el.dataset.y}px)) scale(1)`;
+        }, i * 40);
+      });
+    }
+
+    function closeFan() {
+      fanOpen = false;
+      btn.classList.remove('pressing');
+      items.forEach((el, i) => {
+        el.style.pointerEvents = 'none';
+        el.style.transition = `transform 0.25s ease ${i * 30}ms, opacity 0.25s ease ${i * 30}ms`;
+        el.style.transform = `translate(calc(-50% + ${el.dataset.x}px), calc(-50% + ${el.dataset.y}px)) scale(0)`;
+        el.style.opacity = '0';
+        el.classList.remove('active');
+      });
+    }
+
+    function getActiveItem(x, y) {
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let best = -1, bestDist = Infinity;
+      items.forEach((el, i) => {
+        const tx = cx + parseFloat(el.dataset.x);
+        const ty = cy + parseFloat(el.dataset.y);
+        const d = Math.hypot(x - tx, y - ty);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      return bestDist < 48 ? best : -1;
+    }
+
+    function slideResolve() {
+      intro.classList.add('fade-out');
+      setTimeout(() => { intro.style.display = 'none'; }, 600);
+
+      const formEl = document.getElementById('form');
+      const items = Array.from(formEl.children);
+      items.forEach(el => { el.style.opacity = '0'; });
+
+      document.body.style.overflowX = 'hidden';
+
+      items.forEach((el, i) => {
+        setTimeout(() => {
+          el.style.opacity = '';
+          el.classList.add(i % 2 === 0 ? 'slide-left' : 'slide-right');
+        }, 200 + i * 70);
+      });
+
+      const totalMs = 200 + items.length * 70 + 500;
+      setTimeout(() => {
+        document.body.style.overflowX = '';
+        items.forEach(el => el.classList.remove('slide-left', 'slide-right'));
+      }, totalMs);
+    }
+
+    function pixelResolve() {
+      const W = window.innerWidth, H = window.innerHeight;
+
+      // イントロを非表示にしてフォームを描画させる
+      intro.setAttribute('data-html2canvas-ignore', 'true');
+      intro.style.opacity = '0';
+      intro.style.pointerEvents = 'none';
+
+      // カバーを先に張ってフラッシュを防ぐ（html2canvasには無視させる）
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      canvas.setAttribute('data-html2canvas-ignore', 'true');
+      canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:10001;pointer-events:none;';
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(0, 0, W, H);
+
+      setTimeout(() => {
+        if (typeof html2canvas === 'undefined') {
+          intro.style.display = 'none';
+          canvas.style.transition = 'opacity 0.5s';
+          canvas.style.opacity = '0';
+          setTimeout(() => canvas.remove(), 500);
+          return;
+        }
+        html2canvas(document.body, {
+          useCORS: true, allowTaint: true, scale: 1,
+          x: 0, y: 0, width: W, height: H,
+          windowWidth: W, windowHeight: H
+        }).then(shot => {
+          intro.style.display = 'none';
+          const tmp = document.createElement('canvas');
+          const tCtx = tmp.getContext('2d');
+          const levels = [48, 32, 20, 12, 7, 4, 2, 1];
+          let idx = 0;
+
+          function tick() {
+            if (idx >= levels.length) {
+              canvas.style.transition = 'opacity 0.3s';
+              canvas.style.opacity = '0';
+              setTimeout(() => canvas.remove(), 300);
+              return;
+            }
+            const div = levels[idx];
+            const sw = Math.ceil(W / div);
+            const sh = Math.ceil(H / div);
+            tmp.width = sw; tmp.height = sh;
+            tCtx.imageSmoothingEnabled = false;
+            tCtx.drawImage(shot, 0, 0, sw, sh);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tmp, 0, 0, W, H);
+            idx++;
+            setTimeout(tick, 160);
+          }
+          tick();
+        }).catch(() => {
+          canvas.remove();
+          intro.style.display = 'none';
+        });
+      }, 60);
+    }
+
+    function select(idx) {
+      closeFan();
+      reply.textContent = options[idx].reply;
+      reply.classList.add('show');
+      setTimeout(() => {
+        if (options[idx].proceed) {
+          slideResolve();
+        } else {
+          // 最初の画面に戻す
+          reply.classList.remove('show');
+          reply.textContent = '';
+          hint.classList.remove('hidden');
+        }
+      }, 1200);
+    }
+
+    createFan(); // items配列を先に生成
+
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    hint.textContent = isTouch ? 'ボタンを押したまま引っ張って選択' : 'クリックして選択';
+
+    if (isTouch) {
+      // スマートフォン：長押し＋スライド＋離す
+      btn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const tx = t.clientX, ty = t.clientY;
+        pressTimer = setTimeout(() => { _createBlob(tx, ty); openFan(); _addBlobProxies('.ifan-item'); }, 250);
+      }, { passive: false });
+
+      btn.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (!fanOpen) return;
+        const t = e.touches[0];
+        const idx = getActiveItem(t.clientX, t.clientY);
+        items.forEach((el, i) => el.classList.toggle('active', i === idx));
+        activeIdx = idx;
+      }, { passive: false });
+
+      btn.addEventListener('touchend', e => {
+        e.preventDefault();
+        clearTimeout(pressTimer);
+        if (fanOpen && activeIdx >= 0) {
+          select(activeIdx);
+        } else {
+          closeFan();
+          hint.classList.remove('hidden');
+        }
+        activeIdx = -1;
+      });
+
+    } else {
+      // PC：クリックで開く→アイテムをクリックで選択
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (fanOpen) { closeFan(); hint.classList.remove('hidden'); }
+        else { openFan(); }
+      });
+
+      items.forEach((el, idx) => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          select(idx);
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (fanOpen) { closeFan(); hint.classList.remove('hidden'); }
+      });
+    }
+
+  })();
+</script>
+
+<script>
+// テスト用自動入力（確認画面アニメーション確認用）
+window.addEventListener('load', () => {
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function setCs(csId, val, label) {
+    const cs = document.getElementById(csId);
+    if (!cs) return;
+    const hidden = cs.querySelector('input[type=hidden]');
+    const disp = cs.querySelector('.cs-display');
+    hidden.value = val;
+    disp.textContent = label;
+    disp.classList.remove('cs-placeholder');
+    const item = Array.from(cs.querySelectorAll('.cs-item')).find(i => i.dataset.value === val);
+    if (item) item.classList.add('cs-selected');
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+});
 </script>
 
 </body></html>

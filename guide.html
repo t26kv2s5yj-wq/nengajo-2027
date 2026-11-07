@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>年画状フォーム 仕組みガイド</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #CC0000;
+    --fg: #1a1917;
+    --fg2: #6b6860;
+    --fg3: #9e9c97;
+    --bg: #f7f6f4;
+    --bg2: #ffffff;
+    --border: rgba(0,0,0,0.09);
+  }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--fg);
+    background: #fff;
+    padding: 48px 56px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* header */
+  .eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: var(--fg2);
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+
+  /* flow */
+  .flow {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+  .flow-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg3);
+    margin-bottom: 14px;
+  }
+  .flow-nodes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .node.accent { border-color: rgba(204,0,0,0.2); background: #fff5f5; }
+  .node-icon { font-size: 16px; }
+  .arrow { color: var(--fg3); font-size: 14px; }
+  .flow-note {
+    font-size: 11px;
+    color: var(--fg3);
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* sections */
+  .section { margin-bottom: 28px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .section-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  h2 { font-size: 15px; font-weight: 700; }
+
+  /* table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  tr { border-bottom: 1px solid var(--border); }
+  tr:last-child { border-bottom: none; }
+  td { padding: 8px 6px; vertical-align: top; }
+  td:first-child {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg3);
+    white-space: nowrap;
+    width: 120px;
+    padding-top: 10px;
+  }
+  td:last-child { color: var(--fg2); }
+
+  /* steps */
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; }
+  .step-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-title { font-weight: 700; font-size: 13px; }
+  .step-desc { font-size: 12px; color: var(--fg2); margin-top: 2px; }
+  code {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  .notice {
+    background: #fff5f5;
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--fg2);
+    margin-top: 12px;
+    border-radius: 0 6px 6px 0;
+  }
+  .notice strong { color: var(--accent); }
+
+  .ref-box {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 28px 0;
+  }
+
+  /* print */
+  @media print {
+    body { padding: 20px 28px; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">studio yakkii — 2026.11</p>
+<h1>年画状フォームの仕組みガイド</h1>
+<p class="subtitle">サイト開発・更新・データ管理・メール通知の全体をまとめた資料です。</p>
+
+<!-- flow -->
+<div class="flow">
+  <p class="flow-label">データの流れ</p>
+  <div class="flow-nodes">
+    <div class="node accent"><span class="node-icon">📝</span>応募フォーム（GitHub Pages）</div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="node-icon">⚙️</span>GAS</div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="node-icon">📊</span>スプレッドシート</div>
+    <span class="arrow">→</span>
+    <div class="node accent"><span class="node-icon">✉️</span>メール通知</div>
+  </div>
+  <p class="flow-note">応募者がフォームを送信 → GASが受け取り → スプレッドシートへ記録 + メール通知を同時実行</p>
+</div>
+
+<!-- section 1 -->
+<div class="section">
+  <div class="section-header"><div class="section-num">1</div><h2>応募フォーム（Webサイト）</h2></div>
+  <table>
+    <tr><td>公開URL</td><td>https://t26kv2s5yj-wq.github.io/nengajo-2027/</td></tr>
+    <tr><td>構成</td><td>HTML・CSS・JSをひとつの index.html にまとめた構成</td></tr>
+    <tr><td>ホスト</td><td>GitHub Pages（無料・push後1〜3分で自動反映）</td></tr>
+    <tr><td>リポジトリ</td><td>t26kv2s5yj-wq/nengajo-2027</td></tr>
+  </table>
+</div>
+
+<!-- section 2 -->
+<div class="section">
+  <div class="section-header"><div class="section-num">2</div><h2>フォームの更新手順</h2></div>
+  <div class="steps">
+    <div class="step"><div class="step-dot">1</div><div><div class="step-title">Claude Codeでindex.htmlを編集</div><div class="step-desc">iCloud Drive / ClaudeCode / nengajo-form / index.html</div></div></div>
+    <div class="step"><div class="step-dot">2</div><div><div class="step-title">ローカルで動作確認</div><div class="step-desc">Terminal: <code>python3 -m http.server 8765</code><br>IP確認: <code>ipconfig getifaddr en0</code> → http://[IP]:8765/nengajo-form/</div></div></div>
+    <div class="step"><div class="step-dot">3</div><div><div class="step-title">GitHub DesktopでCommit & Push</div><div class="step-desc">TerminalからのHTTPS認証に問題があるためGitHub Desktopを使用</div></div></div>
+    <div class="step"><div class="step-dot">4</div><div><div class="step-title">1〜3分後に公開URLへ反映</div><div class="step-desc">キャッシュが残る場合は ⌘+Shift+R でハードリロード</div></div></div>
+  </div>
+</div>
+
+<!-- section 3 -->
+<div class="section">
+  <div class="section-header"><div class="section-num">3</div><h2>Google Apps Script（GAS）</h2></div>
+  <table>
+    <tr><td>TOKEN</td><td>yakkii2027（正規フォームからの送信のみ受け付けるセキュリティ）</td></tr>
+    <tr><td>役割</td><td>データ受信 → スプレッドシート書き込み + メール送信</td></tr>
+    <tr><td>更新後</td><td>デプロイ → デプロイを管理 → 新しいバージョン で再デプロイ</td></tr>
+    <tr><td>API追加時</td><td>手動でテスト関数を実行して権限承認してからデプロイ</td></tr>
+    <tr><td>使用API</td><td>MailApp.sendEmail（GmailAppより権限管理がシンプル）</td></tr>
+  </table>
+  <div class="notice"><strong>注意：</strong>スプレッドシートの「通知ルール」はGASの appendRow() に反応しません。通知はGASコード内で実装しています。</div>
+</div>
+
+<!-- section 4 -->
+<div class="section">
+  <div class="section-header"><div class="section-num">4</div><h2>スプレッドシートのデータ</h2></div>
+  <table>
+    <tr><td>記録項目</td><td>タイムスタンプ・姓・名・郵便番号・都道府県・市区町村・番地以降・連絡サービス・連絡先・メッセージ・連名数・連名氏名（最大5名）</td></tr>
+    <tr><td>電話番号</td><td>入力は11桁数字のまま、送信時に 080-1234-5678 形式に自動変換して保存</td></tr>
+  </table>
+</div>
+
+<!-- section 5 -->
+<div class="section">
+  <div class="section-header"><div class="section-num">5</div><h2>メール通知</h2></div>
+  <table>
+    <tr><td>送信先</td><td>studio.yakkii@gmail.com</td></tr>
+    <tr><td>件名</td><td>【年画状 2027】新しい応募がありました</td></tr>
+    <tr><td>本文</td><td>〇〇 〇〇 さんから応募がありました。</td></tr>
+  </table>
+</div>
+
+<hr class="divider">
+
+<div class="section">
+  <div class="section-header"><div class="section-num" style="background:var(--fg3)">参</div><h2>クイックリファレンス</h2></div>
+  <div class="ref-box">
+    <table>
+      <tr><td>公開URL</td><td>https://t26kv2s5yj-wq.github.io/nengajo-2027/</td></tr>
+      <tr><td>ローカルパス</td><td>iCloud Drive / ClaudeCode / nengajo-form / index.html</td></tr>
+      <tr><td>LAN確認</td><td>python3 -m http.server 8765</td></tr>
+      <tr><td>IP確認</td><td>ipconfig getifaddr en0</td></tr>
+      <tr><td>GAS TOKEN</td><td>yakkii2027</td></tr>
+      <tr><td>通知メール</td><td>studio.yakkii@gmail.com</td></tr>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>
